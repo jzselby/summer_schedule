@@ -20,24 +20,29 @@
       0% { opacity: 1; transform: translateY(0) rotate(0deg); }
       100% { opacity: 0; transform: translateY(100vh) rotate(720deg); }
     }
-    @keyframes popIn {
-      0% { transform: scale(0.5); opacity: 0; }
-      50% { transform: scale(1.2); }
-      100% { transform: scale(1); opacity: 1; }
-    }
     @keyframes bounceCheck {
       0% { transform: scale(1); }
       30% { transform: scale(1.3); }
       60% { transform: scale(0.9); }
       100% { transform: scale(1); }
     }
+    @keyframes popStar {
+      0% { transform: scale(0.5); opacity: 0; }
+      50% { transform: scale(1.3); }
+      100% { transform: scale(1); opacity: 1; }
+    }
     @keyframes float {
       0%, 100% { transform: translateY(0); }
       50% { transform: translateY(-6px); }
     }
-    .task-pop { animation: popIn 0.3s ease-out; }
+    @keyframes slideUp {
+      from { transform: translateY(100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
     .check-bounce { animation: bounceCheck 0.4s ease-out; }
+    .star-pop { animation: popStar 0.3s ease-out; }
     .trophy-float { animation: float 2s ease-in-out infinite; }
+    .modal-slide { animation: slideUp 0.3s ease-out; }
   </style>
 </head>
 <body>
@@ -45,201 +50,266 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
-    /* ─── helpers ─── */
     const getToday = () => {
       const d = new Date();
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
     };
-
     const formatDate = () =>
-      new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+      new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
 
-    const load = (key, fallback) => {
-      try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
-      catch { return fallback; }
-    };
-    const save = (key, val) => {
-      try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
-    };
+    const load = (k,fb) => { try { const v=localStorage.getItem(k); return v?JSON.parse(v):fb; } catch{ return fb; } };
+    const save = (k,v) => { try { localStorage.setItem(k,JSON.stringify(v)); } catch{} };
 
-    /* ─── constants ─── */
-    const CAT = {
-      Chores:        { emoji: "🧹", gradient: "from-amber-400 to-orange-400" },
-      Reading:       { emoji: "📚", gradient: "from-sky-400 to-blue-500" },
-      Outside:       { emoji: "☀️", gradient: "from-emerald-400 to-green-500" },
-      Creative:      { emoji: "🎨", gradient: "from-fuchsia-400 to-purple-500" },
-      Learning:      { emoji: "📝", gradient: "from-teal-400 to-cyan-500" },
-      "Screen Time": { emoji: "🎮", gradient: "from-indigo-400 to-violet-500" },
-    };
+    const DEFAULT_PIN = "1234";
 
-    const CATEGORY_ORDER = ["Chores", "Reading", "Outside", "Creative", "Learning", "Screen Time"];
+    const BLOCK_STYLES = [
+      { emoji:"\u{1F305}", grad:"from-amber-300 to-orange-400" },
+      { emoji:"\u{1F9F9}", grad:"from-sky-300 to-blue-400" },
+      { emoji:"\u{1F9E0}", grad:"from-violet-400 to-purple-500" },
+      { emoji:"\u{1F4DA}", grad:"from-emerald-400 to-green-500" },
+      { emoji:"\u{1F37D}\uFE0F", grad:"from-rose-300 to-pink-400" },
+      { emoji:"\u2600\uFE0F", grad:"from-teal-400 to-cyan-500" },
+      { emoji:"\u{1F3AE}", grad:"from-indigo-400 to-blue-500" },
+      { emoji:"\u{1F468}\u200D\u{1F469}\u200D\u{1F467}\u200D\u{1F466}", grad:"from-fuchsia-400 to-pink-500" },
+    ];
+
+    const DEFAULT_BLOCKS = [
+      { id:"wake",   time:"8:30 \u2013 9:30",  title:"Wake Up & Morning Routine", desc:"Shower, breakfast, get dressed, brush teeth", gated:false },
+      { id:"chores", time:"9:30 \u2013 10:00", title:"Quick Chores",              desc:"Dishwasher, wipe counters, make beds, daily task", gated:false },
+      { id:"brain",  time:"10:00 \u2013 11:00",title:"Brain Power Hour",          desc:"Coding, Spanish, or math games", gated:false },
+      { id:"read",   time:"11:00 \u2013 12:00",title:"Reading Time",              desc:"Downtime with a book \u2014 no devices", gated:false },
+      { id:"lunch",  time:"12:00 \u2013 1:00", title:"Lunch & Reset",             desc:"Make lunch, clean up after yourself", gated:false },
+      { id:"open",   time:"1:00 \u2013 3:30",  title:"Open Window",               desc:"Friends, outside, basketball, board games, Lego, drawing", gated:false },
+      { id:"screen", time:"3:30 \u2013 4:30",  title:"Screen Time Hour",          desc:"Video games, YouTube, or TV", gated:true },
+      { id:"family", time:"4:30 onward",  title:"Family Time & Free Play",   desc:"Dinner, activities, hang out", gated:false },
+    ];
 
     const DEFAULT_CONFIG = {
       kids: ["Kid 1", "Kid 2"],
-      tasks: [
-        { id: "bed",      category: "Chores",      label: "Make your bed" },
-        { id: "room",     category: "Chores",      label: "Clean your room" },
-        { id: "dishes",   category: "Chores",      label: "Help with dishes" },
-        { id: "laundry",  category: "Chores",      label: "Put away laundry" },
-        { id: "read",     category: "Reading",     label: "Read for 30 minutes" },
-        { id: "outside",  category: "Outside",     label: "Outside time (1 hour)" },
-        { id: "creative", category: "Creative",    label: "Creative time" },
-        { id: "learning", category: "Learning",    label: "Learning activity" },
-        { id: "screen",   category: "Screen Time", label: "Screen time (earned!)" },
-      ],
+      blocks: DEFAULT_BLOCKS,
+      pin: DEFAULT_PIN,
+      weekdays: "MONDAY \u2013 FRIDAY",
     };
 
-    /* ─── Confetti ─── */
-    function Confetti({ show }) {
-      if (!show) return null;
-      const pieces = Array.from({ length: 50 }, (_, i) => {
-        const colors = ["#f59e0b","#3b82f6","#10b981","#ec4899","#8b5cf6","#f97316","#06b6d4"];
-        return (
-          <div key={i} className="absolute" style={{
-            left: `${Math.random()*100}%`, top: "-10px",
-            width: 6+Math.random()*8, height: (6+Math.random()*8)*0.6,
-            backgroundColor: colors[i%colors.length], borderRadius: 2, opacity: 0,
-            animation: `confettiFall ${1.5+Math.random()*1.5}s ${Math.random()*0.7}s ease-out forwards`,
-            transform: `rotate(${Math.random()*720}deg)`,
-          }} />
-        );
-      });
-      return <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">{pieces}</div>;
+    /* Confetti */
+    function Confetti({show}) {
+      if(!show) return null;
+      const colors=["#f59e0b","#3b82f6","#10b981","#ec4899","#8b5cf6","#f97316","#06b6d4"];
+      return (
+        <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+          {Array.from({length:50},(_,i)=>(
+            <div key={i} className="absolute" style={{
+              left:Math.random()*100+"%",top:"-10px",
+              width:6+Math.random()*8,height:(6+Math.random()*8)*0.6,
+              backgroundColor:colors[i%colors.length],borderRadius:2,opacity:0,
+              animation:"confettiFall "+(1.5+Math.random()*1.5)+"s "+Math.random()*0.7+"s ease-out forwards",
+              transform:"rotate("+Math.random()*720+"deg)",
+            }}/>
+          ))}
+        </div>
+      );
     }
 
-    /* ─── Progress Ring ─── */
-    function ProgressRing({ pct, size = 72, stroke = 6 }) {
-      const r = (size - stroke) / 2;
-      const circ = 2 * Math.PI * r;
-      const offset = circ - (pct / 100) * circ;
-      const color = pct >= 100 ? "#10b981" : pct >= 50 ? "#3b82f6" : "#f59e0b";
+    /* Progress Ring */
+    function ProgressRing({pct,size=68,stroke=6}) {
+      const r=(size-stroke)/2, circ=2*Math.PI*r;
+      const offset=circ-(pct/100)*circ;
+      const color=pct>=100?"#10b981":pct>=50?"#3b82f6":"#f59e0b";
       return (
         <svg width={size} height={size} className="transform -rotate-90">
-          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#e5e7eb" strokeWidth={stroke} />
+          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#e5e7eb" strokeWidth={stroke}/>
           <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color}
             strokeWidth={stroke} strokeDasharray={circ} strokeDashoffset={offset}
-            strokeLinecap="round" style={{ transition: "stroke-dashoffset 0.6s ease, stroke 0.3s" }} />
+            strokeLinecap="round" style={{transition:"stroke-dashoffset 0.6s ease, stroke 0.3s"}}/>
           <text x={size/2} y={size/2} textAnchor="middle" dominantBaseline="central"
-            className="fill-gray-700 font-bold" fontSize={size*0.22}
-            style={{ transform: "rotate(90deg)", transformOrigin: "center" }}>
+            className="fill-gray-700 font-bold" fontSize={size*0.24}
+            style={{transform:"rotate(90deg)",transformOrigin:"center"}}>
             {Math.round(pct)}%
           </text>
         </svg>
       );
     }
 
-    /* ─── Check Icon SVG ─── */
-    function CheckIcon() {
+    /* PIN Pad */
+    function PinPad({onSuccess,onCancel,correctPin}) {
+      const [entry,setEntry] = useState("");
+      const [error,setError] = useState(false);
+
+      const press = (n) => {
+        if(entry.length>=6) return;
+        const next = entry+n;
+        setError(false);
+        if(next.length === correctPin.length) {
+          if(next === correctPin) { onSuccess(); }
+          else { setError(true); setTimeout(()=>{setEntry("");setError(false);},600); }
+        } else { setEntry(next); }
+      };
+      const del = () => { setEntry(entry.slice(0,-1)); setError(false); };
+
       return (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="20 6 9 17 4 12" />
-        </svg>
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center"
+          onClick={onCancel}>
+          <div className="bg-white rounded-3xl p-6 w-80 shadow-2xl modal-slide" onClick={e=>e.stopPropagation()}>
+            <h3 className="text-center text-lg font-bold mb-1" style={{fontFamily:"'Fredoka',sans-serif",color:"#f97316"}}>
+              🔐 Parent PIN
+            </h3>
+            <p className="text-center text-sm text-gray-500 mb-4">Enter PIN to access settings</p>
+            <div className="flex justify-center gap-3 mb-6">
+              {Array.from({length:correctPin.length},(_,i)=>(
+                <div key={i} className={"w-4 h-4 rounded-full transition-all "+(
+                  error ? "bg-red-400 animate-pulse" :
+                  i<entry.length ? "bg-orange-400 scale-110" : "bg-gray-200"
+                )}/>
+              ))}
+            </div>
+            <div className="grid grid-cols-3 gap-2 max-w-[240px] mx-auto">
+              {[1,2,3,4,5,6,7,8,9].map(n=>(
+                <button key={n} onClick={()=>press(String(n))}
+                  className="h-14 rounded-xl bg-gray-50 hover:bg-gray-100 active:bg-gray-200 text-xl font-bold text-gray-700 transition-all active:scale-95">
+                  {n}
+                </button>
+              ))}
+              <button onClick={onCancel}
+                className="h-14 rounded-xl bg-gray-50 hover:bg-gray-100 text-sm font-semibold text-gray-400 transition-all">
+                Cancel
+              </button>
+              <button onClick={()=>press("0")}
+                className="h-14 rounded-xl bg-gray-50 hover:bg-gray-100 active:bg-gray-200 text-xl font-bold text-gray-700 transition-all active:scale-95">
+                0
+              </button>
+              <button onClick={del}
+                className="h-14 rounded-xl bg-gray-50 hover:bg-gray-100 text-xl font-semibold text-gray-400 transition-all">
+                ⌫
+              </button>
+            </div>
+          </div>
+        </div>
       );
     }
 
-    /* ─── Main App ─── */
+    /* Main App */
     function App() {
       const today = getToday();
-      const dailyKey = `summer-daily-${today}`;
+      const dailyKey = "summer-daily-"+today;
 
-      const [config, setConfig] = useState(() => load("summer-config", DEFAULT_CONFIG));
+      const [config, setConfig] = useState(() => load("summer-config-v2", DEFAULT_CONFIG));
       const [daily, setDaily] = useState(() => {
         const d = load(dailyKey, {});
-        config.kids.forEach(k => { if (!d[k]) d[k] = []; });
+        config.kids.forEach(k => { if(!d[k]) d[k]=[]; });
         return d;
       });
       const [activeKid, setActiveKid] = useState(0);
+      const [showPin, setShowPin] = useState(false);
       const [editing, setEditing] = useState(false);
       const [showConfetti, setShowConfetti] = useState(false);
       const [justChecked, setJustChecked] = useState(null);
+
       const [editNames, setEditNames] = useState([]);
-      const [editTasks, setEditTasks] = useState([]);
-      const [newTask, setNewTask] = useState({ label: "", category: "Chores" });
+      const [editBlocks, setEditBlocks] = useState([]);
+      const [editPin, setEditPin] = useState("");
+      const [editWeekdays, setEditWeekdays] = useState("");
+      const [newBlock, setNewBlock] = useState({time:"",title:"",desc:"",gated:false});
+      const [editingBlockIdx, setEditingBlockIdx] = useState(null);
+
       const prevPctRef = useRef({});
 
-      const saveConfigState = (c) => { setConfig(c); save("summer-config", c); };
-      const saveDailyState = (d) => { setDaily(d); save(dailyKey, d); };
+      const saveConfig = (c) => { setConfig(c); save("summer-config-v2",c); };
+      const saveDaily = (d) => { setDaily(d); save(dailyKey,d); };
 
       const kid = config.kids[activeKid] || config.kids[0];
       const checked = daily[kid] || [];
-      const nonScreenTasks = config.tasks.filter(t => t.category !== "Screen Time");
-      const screenUnlocked = nonScreenTasks.every(t => checked.includes(t.id));
-      const totalTasks = config.tasks.length;
+      const nonGated = config.blocks.filter(b=>!b.gated);
+      const allNonGatedDone = nonGated.every(b=>checked.includes(b.id));
+      const totalBlocks = config.blocks.length;
       const totalDone = checked.length;
-      const pct = totalTasks > 0 ? (totalDone / totalTasks) * 100 : 0;
+      const pct = totalBlocks>0?(totalDone/totalBlocks)*100:0;
 
-      const toggle = (taskId, isScreen) => {
-        if (isScreen && !screenUnlocked) return;
-        const curr = [...(daily[kid] || [])];
-        const idx = curr.indexOf(taskId);
-        if (idx >= 0) { curr.splice(idx, 1); }
+      const toggle = (blockId, isGated) => {
+        if(isGated && !allNonGatedDone) return;
+        const curr = [...(daily[kid]||[])];
+        const idx = curr.indexOf(blockId);
+        if(idx>=0) { curr.splice(idx,1); }
         else {
-          curr.push(taskId);
-          setJustChecked(taskId);
-          setTimeout(() => setJustChecked(null), 600);
+          curr.push(blockId);
+          setJustChecked(blockId);
+          setTimeout(()=>setJustChecked(null),600);
         }
-        const newDaily = { ...daily, [kid]: curr };
-        const newPct = totalTasks > 0 ? (curr.length / totalTasks) * 100 : 0;
-        const prevPct = prevPctRef.current[kid] || 0;
-        if (newPct >= 100 && prevPct < 100) {
+        const newDaily = {...daily,[kid]:curr};
+        const newPct = totalBlocks>0?(curr.length/totalBlocks)*100:0;
+        const prev = prevPctRef.current[kid]||0;
+        if(newPct>=100 && prev<100) {
           setShowConfetti(true);
-          setTimeout(() => setShowConfetti(false), 4000);
+          setTimeout(()=>setShowConfetti(false),4000);
         }
-        prevPctRef.current[kid] = newPct;
-        saveDailyState(newDaily);
+        prevPctRef.current[kid]=newPct;
+        saveDaily(newDaily);
       };
 
       const resetDay = () => {
-        const newDaily = { ...daily, [kid]: [] };
-        prevPctRef.current[kid] = 0;
-        saveDailyState(newDaily);
+        const newDaily = {...daily,[kid]:[]};
+        prevPctRef.current[kid]=0;
+        saveDaily(newDaily);
       };
 
-      const openEdit = () => {
+      const openEdit = () => setShowPin(true);
+      const pinSuccess = () => {
+        setShowPin(false);
         setEditNames([...config.kids]);
-        setEditTasks(config.tasks.map(t => ({ ...t })));
-        setNewTask({ label: "", category: "Chores" });
+        setEditBlocks(config.blocks.map(b=>({...b})));
+        setEditPin(config.pin);
+        setEditWeekdays(config.weekdays);
+        setEditingBlockIdx(null);
+        setNewBlock({time:"",title:"",desc:"",gated:false});
         setEditing(true);
       };
 
       const saveEdit = () => {
-        const cleaned = editTasks.filter(t => t.label.trim());
-        const newConfig = { kids: editNames.map(n => n.trim() || "Kid"), tasks: cleaned };
+        const cleaned = editBlocks.filter(b=>b.title.trim());
+        const newConfig = {
+          kids: editNames.map(n=>n.trim()||"Kid"),
+          blocks: cleaned,
+          pin: editPin || DEFAULT_PIN,
+          weekdays: editWeekdays,
+        };
         const newDaily = {};
-        newConfig.kids.forEach((name, i) => {
+        newConfig.kids.forEach((name,i) => {
           const oldName = config.kids[i];
           newDaily[name] = daily[oldName] || [];
         });
-        saveConfigState(newConfig);
-        saveDailyState(newDaily);
+        saveConfig(newConfig);
+        saveDaily(newDaily);
         setEditing(false);
       };
 
-      const addTask = () => {
-        if (!newTask.label.trim()) return;
-        setEditTasks([...editTasks, { id: `t-${Date.now()}`, category: newTask.category, label: newTask.label.trim() }]);
-        setNewTask({ label: "", category: newTask.category });
+      const addBlock = () => {
+        if(!newBlock.title.trim()) return;
+        setEditBlocks([...editBlocks,{...newBlock, id:"b-"+Date.now()}]);
+        setNewBlock({time:"",title:"",desc:"",gated:false});
       };
 
-      const grouped = {};
-      CATEGORY_ORDER.forEach(cat => {
-        const items = config.tasks.filter(t => t.category === cat);
-        if (items.length > 0) grouped[cat] = items;
-      });
+      const removeBlock = (id) => setEditBlocks(editBlocks.filter(b=>b.id!==id));
+      const moveBlock = (idx,dir) => {
+        const arr=[...editBlocks];
+        const swap=idx+dir;
+        if(swap<0||swap>=arr.length) return;
+        [arr[idx],arr[swap]]=[arr[swap],arr[idx]];
+        setEditBlocks(arr);
+      };
 
       return (
         <React.Fragment>
           <Confetti show={showConfetti} />
+          {showPin && <PinPad correctPin={config.pin} onSuccess={pinSuccess} onCancel={()=>setShowPin(false)} />}
 
           <div className="min-h-screen pb-8" style={{
-            background: "linear-gradient(160deg, #fef9c3 0%, #e0f2fe 40%, #fce7f3 80%, #f0fdf4 100%)",
-            fontFamily: "'Quicksand', sans-serif",
+            background:"linear-gradient(160deg, #fef9c3 0%, #e0f2fe 40%, #fce7f3 80%, #f0fdf4 100%)",
+            fontFamily:"'Quicksand',sans-serif",
           }}>
             {/* HEADER */}
             <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-white/50 shadow-sm">
               <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
                 <div className="flex-1 min-w-0">
-                  <h1 className="text-2xl font-bold tracking-tight" style={{ fontFamily: "'Fredoka', sans-serif", color: "#f97316" }}>
+                  <h1 className="text-2xl font-bold tracking-tight" style={{fontFamily:"'Fredoka',sans-serif",color:"#f97316"}}>
                     ☀️ Summer Schedule
                   </h1>
                   <p className="text-sm text-gray-500 font-medium">{formatDate()}</p>
@@ -250,23 +320,20 @@
                   ⚙️
                 </button>
               </div>
-
-              {/* KID TABS */}
               <div className="max-w-2xl mx-auto px-4 pb-2 flex gap-2">
-                {config.kids.map((name, i) => {
-                  const kChecked = (daily[name] || []).length;
-                  const kPct = totalTasks > 0 ? Math.round((kChecked / totalTasks) * 100) : 0;
-                  const isActive = i === activeKid;
+                {config.kids.map((name,i) => {
+                  const kc=(daily[name]||[]).length;
+                  const kp=totalBlocks>0?Math.round((kc/totalBlocks)*100):0;
+                  const active=i===activeKid;
                   return (
-                    <button key={i} onClick={() => setActiveKid(i)}
-                      className={`flex-1 py-2.5 px-4 rounded-xl font-semibold text-sm transition-all active:scale-95 ${
-                        isActive
-                          ? "bg-gradient-to-r from-orange-400 to-pink-400 text-white shadow-md shadow-orange-200"
-                          : "bg-white/60 text-gray-600 hover:bg-white/80"
-                      }`} style={{ fontFamily: "'Fredoka', sans-serif" }}>
+                    <button key={i} onClick={()=>setActiveKid(i)}
+                      className={"flex-1 py-2.5 px-4 rounded-xl font-semibold text-sm transition-all active:scale-95 "+(
+                        active?"bg-gradient-to-r from-orange-400 to-pink-400 text-white shadow-md shadow-orange-200"
+                              :"bg-white/60 text-gray-600 hover:bg-white/80"
+                      )} style={{fontFamily:"'Fredoka',sans-serif"}}>
                       {name}
-                      <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${isActive ? "bg-white/30" : "bg-gray-100"}`}>
-                        {kPct}%
+                      <span className={"ml-2 text-xs px-2 py-0.5 rounded-full "+(active?"bg-white/30":"bg-gray-100")}>
+                        {kp}%
                       </span>
                     </button>
                   );
@@ -274,79 +341,96 @@
               </div>
             </div>
 
+            {/* DAYS LABEL */}
+            <div className="max-w-2xl mx-auto px-4 mt-4 text-center">
+              <span className="inline-block px-4 py-1.5 rounded-full bg-white/70 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                {config.weekdays}
+              </span>
+            </div>
+
             {/* CELEBRATION */}
             {pct >= 100 && (
               <div className="max-w-2xl mx-auto px-4 mt-4">
                 <div className="rounded-2xl p-4 bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 text-white text-center shadow-lg shadow-emerald-200">
                   <div className="trophy-float inline-block mb-1 text-3xl">🏆</div>
-                  <p className="text-lg font-bold" style={{ fontFamily: "'Fredoka', sans-serif" }}>
-                    All done for today! Amazing job, {kid}! 🎉
+                  <p className="text-lg font-bold" style={{fontFamily:"'Fredoka',sans-serif"}}>
+                    All done today! Amazing job, {kid}! 🎉
                   </p>
                 </div>
               </div>
             )}
 
-            {/* TASKS */}
-            <div className="max-w-2xl mx-auto px-4 mt-4 space-y-4">
-              {CATEGORY_ORDER.filter(cat => grouped[cat]).map(cat => {
-                const style = CAT[cat];
-                const isScreen = cat === "Screen Time";
-                const locked = isScreen && !screenUnlocked;
+            {/* SCHEDULE BLOCKS */}
+            <div className="max-w-2xl mx-auto px-4 mt-4 space-y-3">
+              {config.blocks.map((block,i) => {
+                const st = BLOCK_STYLES[i % BLOCK_STYLES.length];
+                const isDone = checked.includes(block.id);
+                const isGated = block.gated;
+                const locked = isGated && !allNonGatedDone;
+                const isPopping = justChecked === block.id;
 
                 return (
-                  <div key={cat} className={`rounded-2xl overflow-hidden ${locked ? "opacity-70" : ""}`}>
-                    <div className={`flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r ${style.gradient} text-white`}>
-                      <span className="text-lg">{style.emoji}</span>
-                      <span className="font-bold text-sm tracking-wide uppercase" style={{ fontFamily: "'Fredoka', sans-serif" }}>
-                        {cat}
+                  <div key={block.id}
+                    className={"rounded-2xl overflow-hidden transition-all "+(locked?"opacity-60":"")+" "+(isDone?"ring-2 ring-green-300":"")}>
+                    <div className={"flex items-center gap-2 px-4 py-2 bg-gradient-to-r "+st.grad+" text-white"}>
+                      <span className="text-base">{st.emoji}</span>
+                      <span className="font-bold text-sm tracking-wide" style={{fontFamily:"'Fredoka',sans-serif"}}>
+                        {block.time}
                       </span>
                       {locked && (
-                        <span className="ml-auto flex items-center gap-1 text-xs bg-white/25 px-2 py-1 rounded-full">
-                          🔒 Finish other tasks first
+                        <span className="ml-auto text-xs bg-white/25 px-2 py-0.5 rounded-full">
+                          🔒 Earn this first
                         </span>
                       )}
-                      {isScreen && screenUnlocked && (
-                        <span className="ml-auto flex items-center gap-1 text-xs bg-white/25 px-2 py-1 rounded-full">
+                      {isGated && !locked && (
+                        <span className="ml-auto text-xs bg-white/25 px-2 py-0.5 rounded-full">
                           ✨ Unlocked!
                         </span>
                       )}
                     </div>
 
-                    <div className="bg-white/80 backdrop-blur divide-y divide-gray-100">
-                      {grouped[cat].map(task => {
-                        const isDone = checked.includes(task.id);
-                        const isPopping = justChecked === task.id;
-                        return (
-                          <button key={task.id} onClick={() => toggle(task.id, isScreen)}
-                            disabled={locked}
-                            className={`w-full flex items-center gap-3 px-4 py-3.5 text-left transition-all active:bg-gray-50 ${
-                              locked ? "cursor-not-allowed" : "cursor-pointer"
-                            } ${isDone ? "bg-gray-50/50" : ""}`}>
-                            <div className={`w-7 h-7 rounded-lg border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                              isDone
-                                ? `bg-gradient-to-br ${style.gradient} border-transparent shadow-sm ${isPopping ? "check-bounce" : ""}`
-                                : `border-gray-300 ${locked ? "" : "hover:border-gray-400"}`
-                            }`}>
-                              {isDone && <CheckIcon />}
-                              {locked && !isDone && <span className="text-xs text-gray-300">🔒</span>}
-                            </div>
-                            <span className={`flex-1 font-semibold text-base transition-all ${
-                              isDone ? "line-through text-gray-400" : "text-gray-700"
-                            }`}>
-                              {task.label}
-                            </span>
-                            {isDone && isPopping && <span className="task-pop text-lg">⭐</span>}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <button onClick={()=>toggle(block.id,isGated)}
+                      disabled={locked}
+                      className={"w-full flex items-center gap-3 px-4 py-4 text-left transition-all "
+                        +(locked?"cursor-not-allowed":"cursor-pointer active:bg-gray-50")+" "
+                        +(isDone?"bg-green-50/80":"bg-white/80")+" backdrop-blur"}>
+                      <div className={"w-8 h-8 rounded-xl border-2 flex items-center justify-center flex-shrink-0 transition-all "+(
+                        isDone
+                          ? "bg-gradient-to-br "+st.grad+" border-transparent shadow-sm "+(isPopping?"check-bounce":"")
+                          : "border-gray-300 "+(locked?"":"hover:border-gray-400")
+                      )}>
+                        {isDone && (
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                        )}
+                        {locked && !isDone && <span className="text-xs text-gray-300">🔒</span>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={"font-bold text-base transition-all "+(isDone?"line-through text-gray-400":"text-gray-800")}
+                          style={{fontFamily:"'Fredoka',sans-serif"}}>
+                          {block.title}
+                        </p>
+                        <p className={"text-sm mt-0.5 transition-all "+(isDone?"line-through text-gray-300":"text-gray-500")}>
+                          {block.desc}
+                        </p>
+                      </div>
+                      {isDone && isPopping && <span className="star-pop text-2xl">⭐</span>}
+                      {isDone && !isPopping && <span className="text-lg opacity-60">✅</span>}
+                    </button>
                   </div>
                 );
               })}
             </div>
 
-            {/* RESET */}
-            <div className="max-w-2xl mx-auto px-4 mt-6 flex justify-center">
+            {/* FOOTER */}
+            <div className="max-w-2xl mx-auto px-4 mt-5">
+              <p className="text-center text-sm font-bold text-orange-400 italic" style={{fontFamily:"'Fredoka',sans-serif"}}>
+                ⚡ Earn your screen time — do the work first!
+              </p>
+            </div>
+
+            <div className="max-w-2xl mx-auto px-4 mt-4 flex justify-center">
               <button onClick={resetDay}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/60 hover:bg-white/80 text-gray-500 text-sm font-medium transition-all active:scale-95">
                 🔄 Reset today
@@ -357,80 +441,143 @@
           {/* SETTINGS MODAL */}
           {editing && (
             <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center"
-              onClick={() => setEditing(false)}>
-              <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl"
-                onClick={e => e.stopPropagation()}>
+              onClick={()=>setEditing(false)}>
+              <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl modal-slide"
+                onClick={e=>e.stopPropagation()}>
                 <div className="sticky top-0 bg-white/95 backdrop-blur-xl z-10 px-5 pt-5 pb-3 border-b flex items-center">
-                  <h2 className="text-xl font-bold flex-1" style={{ fontFamily: "'Fredoka', sans-serif", color: "#f97316" }}>
-                    ⚙️ Settings
+                  <h2 className="text-xl font-bold flex-1" style={{fontFamily:"'Fredoka',sans-serif",color:"#f97316"}}>
+                    🔐 Parent Settings
                   </h2>
-                  <button onClick={() => setEditing(false)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 text-xl">
-                    ✕
-                  </button>
+                  <button onClick={()=>setEditing(false)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 text-xl">✕</button>
                 </div>
 
                 <div className="p-5 space-y-6">
+                  {/* Kid Names */}
                   <div>
-                    <label className="text-sm font-bold text-gray-500 uppercase tracking-wide">Kid Names</label>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Kid Names</label>
                     <div className="mt-2 space-y-2">
-                      {editNames.map((name, i) => (
-                        <input key={i} value={name} onChange={e => {
-                          const n = [...editNames]; n[i] = e.target.value; setEditNames(n);
+                      {editNames.map((name,i)=>(
+                        <input key={i} value={name} onChange={e=>{
+                          const n=[...editNames]; n[i]=e.target.value; setEditNames(n);
                         }}
                           className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-orange-300 focus:ring-2 focus:ring-orange-100 outline-none text-base font-medium"
-                          placeholder={`Kid ${i + 1}'s name`}
+                          placeholder={"Kid "+(i+1)+"'s name"}
                         />
                       ))}
                     </div>
                   </div>
 
+                  {/* Days Label */}
                   <div>
-                    <label className="text-sm font-bold text-gray-500 uppercase tracking-wide">Daily Tasks</label>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Days Label</label>
+                    <input value={editWeekdays} onChange={e=>setEditWeekdays(e.target.value)}
+                      className="mt-2 w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-orange-300 focus:ring-2 focus:ring-orange-100 outline-none text-sm font-medium"
+                      placeholder="e.g. MONDAY - FRIDAY"
+                    />
+                  </div>
+
+                  {/* PIN */}
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Change PIN</label>
+                    <input value={editPin} onChange={e=>setEditPin(e.target.value.replace(/\D/g,"").slice(0,6))}
+                      type="text" inputMode="numeric" maxLength={6}
+                      className="mt-2 w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-orange-300 focus:ring-2 focus:ring-orange-100 outline-none text-base font-medium tracking-widest text-center"
+                      placeholder="1234"
+                    />
+                    <p className="text-xs text-gray-400 mt-1 text-center">4-6 digit numeric PIN</p>
+                  </div>
+
+                  {/* Schedule Blocks */}
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Schedule Blocks</label>
                     <div className="mt-2 space-y-2">
-                      {editTasks.map((task, i) => (
-                        <div key={task.id} className="flex items-center gap-2">
-                          <span className="text-base flex-shrink-0">{CAT[task.category]?.emoji || "📌"}</span>
-                          <input value={task.label} onChange={e => {
-                            const t = [...editTasks]; t[i] = { ...t[i], label: e.target.value }; setEditTasks(t);
-                          }}
-                            className="flex-1 px-3 py-2 rounded-lg border border-gray-200 focus:border-orange-300 outline-none text-sm font-medium min-w-0"
-                          />
-                          <select value={task.category} onChange={e => {
-                            const t = [...editTasks]; t[i] = { ...t[i], category: e.target.value }; setEditTasks(t);
-                          }}
-                            className="px-2 py-2 rounded-lg border border-gray-200 text-xs font-medium bg-white flex-shrink-0">
-                            {CATEGORY_ORDER.map(c => <option key={c} value={c}>{c}</option>)}
-                          </select>
-                          <button onClick={() => setEditTasks(editTasks.filter(t => t.id !== task.id))}
-                            className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 flex-shrink-0">
-                            🗑️
-                          </button>
+                      {editBlocks.map((block,i)=>(
+                        <div key={block.id} className={"rounded-xl border p-3 "+(block.gated?"border-indigo-200 bg-indigo-50/50":"border-gray-200 bg-gray-50/50")}>
+                          {editingBlockIdx===i ? (
+                            <div className="space-y-2">
+                              <input value={block.time} onChange={e=>{
+                                const b=[...editBlocks]; b[i]={...b[i],time:e.target.value}; setEditBlocks(b);
+                              }} placeholder="Time (e.g. 8:30 - 9:30)"
+                                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium outline-none focus:border-orange-300"
+                              />
+                              <input value={block.title} onChange={e=>{
+                                const b=[...editBlocks]; b[i]={...b[i],title:e.target.value}; setEditBlocks(b);
+                              }} placeholder="Title"
+                                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium outline-none focus:border-orange-300"
+                              />
+                              <input value={block.desc} onChange={e=>{
+                                const b=[...editBlocks]; b[i]={...b[i],desc:e.target.value}; setEditBlocks(b);
+                              }} placeholder="Description"
+                                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium outline-none focus:border-orange-300"
+                              />
+                              <div className="flex items-center gap-3">
+                                <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                                  <input type="checkbox" checked={block.gated} onChange={e=>{
+                                    const b=[...editBlocks]; b[i]={...b[i],gated:e.target.checked}; setEditBlocks(b);
+                                  }} className="rounded" />
+                                  Must earn (locked until others done)
+                                </label>
+                                <button onClick={()=>setEditingBlockIdx(null)}
+                                  className="ml-auto px-3 py-1 rounded-lg bg-orange-100 text-orange-600 text-xs font-bold">
+                                  Done
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <div className="flex flex-col gap-0.5 flex-shrink-0">
+                                <button onClick={()=>moveBlock(i,-1)} className="text-xs text-gray-400 hover:text-gray-600 leading-none">{"\u25B2"}</button>
+                                <button onClick={()=>moveBlock(i,1)} className="text-xs text-gray-400 hover:text-gray-600 leading-none">{"\u25BC"}</button>
+                              </div>
+                              <div className="flex-1 min-w-0 cursor-pointer" onClick={()=>setEditingBlockIdx(i)}>
+                                <p className="text-xs font-bold text-gray-400">{block.time}</p>
+                                <p className="text-sm font-bold text-gray-700 truncate">{block.title}</p>
+                                {block.gated && <span className="text-xs text-indigo-500">🔒 Earned</span>}
+                              </div>
+                              <button onClick={()=>setEditingBlockIdx(i)}
+                                className="p-1.5 rounded-lg hover:bg-white text-gray-400 hover:text-orange-500">✏️</button>
+                              <button onClick={()=>removeBlock(block.id)}
+                                className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500">🗑️</button>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
 
-                    <div className="mt-3 flex items-center gap-2">
-                      <input value={newTask.label} onChange={e => setNewTask({ ...newTask, label: e.target.value })}
-                        onKeyDown={e => e.key === "Enter" && addTask()}
-                        placeholder="Add a task..."
-                        className="flex-1 px-3 py-2 rounded-lg border border-dashed border-gray-300 focus:border-orange-300 outline-none text-sm min-w-0"
+                    {/* add new block */}
+                    <div className="mt-3 rounded-xl border border-dashed border-gray-300 p-3 space-y-2">
+                      <p className="text-xs font-bold text-gray-400">Add New Block</p>
+                      <input value={newBlock.time} onChange={e=>setNewBlock({...newBlock,time:e.target.value})}
+                        placeholder="Time (e.g. 5:00 - 6:00)"
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-orange-300"
                       />
-                      <select value={newTask.category} onChange={e => setNewTask({ ...newTask, category: e.target.value })}
-                        className="px-2 py-2 rounded-lg border border-gray-200 text-xs font-medium bg-white flex-shrink-0">
-                        {CATEGORY_ORDER.map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                      <button onClick={addTask}
-                        className="p-2 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-600 flex-shrink-0">
-                        ➕
-                      </button>
+                      <input value={newBlock.title} onChange={e=>setNewBlock({...newBlock,title:e.target.value})}
+                        placeholder="Title"
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-orange-300"
+                      />
+                      <input value={newBlock.desc} onChange={e=>setNewBlock({...newBlock,desc:e.target.value})}
+                        placeholder="Description"
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-orange-300"
+                      />
+                      <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                          <input type="checkbox" checked={newBlock.gated} onChange={e=>setNewBlock({...newBlock,gated:e.target.checked})} className="rounded" />
+                          Must earn
+                        </label>
+                        <button onClick={addBlock}
+                          className="ml-auto px-4 py-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-600 text-sm font-bold transition-all">
+                          ➕ Add
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
 
+                {/* Save */}
                 <div className="sticky bottom-0 p-5 bg-white/95 backdrop-blur-xl border-t">
                   <button onClick={saveEdit}
                     className="w-full py-3 rounded-xl bg-gradient-to-r from-orange-400 to-pink-400 text-white font-bold text-base shadow-md shadow-orange-200 active:scale-95 transition-all"
-                    style={{ fontFamily: "'Fredoka', sans-serif" }}>
+                    style={{fontFamily:"'Fredoka',sans-serif"}}>
                     Save Changes
                   </button>
                 </div>
