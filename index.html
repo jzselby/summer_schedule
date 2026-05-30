@@ -6,49 +6,43 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Summer Schedule" />
-  <title>Summer Schedule ☀️</title>
+  <title>Summer Schedule</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☀️</text></svg>" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     * { -webkit-tap-highlight-color: transparent; }
-    body { margin: 0; overscroll-behavior: none; }
+    body { margin: 0; overscroll-behavior: none; font-family: 'DM Sans', 'Inter', system-ui, sans-serif; }
     @keyframes confettiFall {
       0% { opacity: 1; transform: translateY(0) rotate(0deg); }
       100% { opacity: 0; transform: translateY(100vh) rotate(720deg); }
     }
     @keyframes bounceCheck {
       0% { transform: scale(1); }
-      30% { transform: scale(1.3); }
-      60% { transform: scale(0.9); }
+      30% { transform: scale(1.15); }
+      60% { transform: scale(0.95); }
       100% { transform: scale(1); }
     }
-    @keyframes popStar {
-      0% { transform: scale(0.5); opacity: 0; }
-      50% { transform: scale(1.3); }
-      100% { transform: scale(1); opacity: 1; }
-    }
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-6px); }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
     }
     @keyframes slideUp {
       from { transform: translateY(100%); opacity: 0; }
       to { transform: translateY(0); opacity: 1; }
     }
-    .check-bounce { animation: bounceCheck 0.4s ease-out; }
-    .star-pop { animation: popStar 0.3s ease-out; }
-    .trophy-float { animation: float 2s ease-in-out infinite; }
+    .check-bounce { animation: bounceCheck 0.35s ease-out; }
+    .fade-in { animation: fadeIn 0.3s ease-out; }
     .modal-slide { animation: slideUp 0.3s ease-out; }
   </style>
 </head>
 <body>
   <div id="root"></div>
   <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
+    const { useState, useRef } = React;
 
     const getToday = () => {
       const d = new Date();
@@ -62,15 +56,15 @@
 
     const DEFAULT_PIN = "1234";
 
-    const BLOCK_STYLES = [
-      { emoji:"\u{1F305}", grad:"from-amber-300 to-orange-400" },
-      { emoji:"\u{1F9F9}", grad:"from-sky-300 to-blue-400" },
-      { emoji:"\u{1F9E0}", grad:"from-violet-400 to-purple-500" },
-      { emoji:"\u{1F4DA}", grad:"from-emerald-400 to-green-500" },
-      { emoji:"\u{1F37D}\uFE0F", grad:"from-rose-300 to-pink-400" },
-      { emoji:"\u2600\uFE0F", grad:"from-teal-400 to-cyan-500" },
-      { emoji:"\u{1F3AE}", grad:"from-indigo-400 to-blue-500" },
-      { emoji:"\u{1F468}\u200D\u{1F469}\u200D\u{1F467}\u200D\u{1F466}", grad:"from-fuchsia-400 to-pink-500" },
+    const BLOCK_COLORS = [
+      { bar:"#d97706", barBg:"bg-amber-600",  light:"bg-amber-50",  ring:"ring-amber-200" },
+      { bar:"#2563eb", barBg:"bg-blue-600",    light:"bg-blue-50",   ring:"ring-blue-200" },
+      { bar:"#7c3aed", barBg:"bg-violet-600",  light:"bg-violet-50", ring:"ring-violet-200" },
+      { bar:"#059669", barBg:"bg-emerald-600",  light:"bg-emerald-50",ring:"ring-emerald-200" },
+      { bar:"#dc2626", barBg:"bg-red-600",      light:"bg-red-50",   ring:"ring-red-200" },
+      { bar:"#0891b2", barBg:"bg-cyan-700",     light:"bg-cyan-50",  ring:"ring-cyan-200" },
+      { bar:"#4f46e5", barBg:"bg-indigo-600",   light:"bg-indigo-50",ring:"ring-indigo-200" },
+      { bar:"#be185d", barBg:"bg-pink-700",     light:"bg-pink-50",  ring:"ring-pink-200" },
     ];
 
     const DEFAULT_BLOCKS = [
@@ -81,7 +75,7 @@
       { id:"lunch",  time:"12:00 \u2013 1:00", title:"Lunch & Reset",             desc:"Make lunch, clean up after yourself", gated:false },
       { id:"open",   time:"1:00 \u2013 3:30",  title:"Open Window",               desc:"Friends, outside, basketball, board games, Lego, drawing", gated:false },
       { id:"screen", time:"3:30 \u2013 4:30",  title:"Screen Time Hour",          desc:"Video games, YouTube, or TV", gated:true },
-      { id:"family", time:"4:30 onward",  title:"Family Time & Free Play",   desc:"Dinner, activities, hang out", gated:false },
+      { id:"family", time:"4:30 onward",       title:"Family Time & Free Play",   desc:"Dinner, activities, hang out", gated:false },
     ];
 
     const DEFAULT_CONFIG = {
@@ -94,15 +88,15 @@
     /* Confetti */
     function Confetti({show}) {
       if(!show) return null;
-      const colors=["#f59e0b","#3b82f6","#10b981","#ec4899","#8b5cf6","#f97316","#06b6d4"];
+      const colors=["#d97706","#2563eb","#059669","#7c3aed","#dc2626","#0891b2"];
       return (
         <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
-          {Array.from({length:50},(_,i)=>(
+          {Array.from({length:40},(_,i)=>(
             <div key={i} className="absolute" style={{
               left:Math.random()*100+"%",top:"-10px",
-              width:6+Math.random()*8,height:(6+Math.random()*8)*0.6,
-              backgroundColor:colors[i%colors.length],borderRadius:2,opacity:0,
-              animation:"confettiFall "+(1.5+Math.random()*1.5)+"s "+Math.random()*0.7+"s ease-out forwards",
+              width:5+Math.random()*6,height:(5+Math.random()*6)*0.5,
+              backgroundColor:colors[i%colors.length],borderRadius:1,opacity:0,
+              animation:"confettiFall "+(1.8+Math.random()*1.2)+"s "+Math.random()*0.5+"s ease-out forwards",
               transform:"rotate("+Math.random()*720+"deg)",
             }}/>
           ))}
@@ -111,18 +105,18 @@
     }
 
     /* Progress Ring */
-    function ProgressRing({pct,size=68,stroke=6}) {
+    function ProgressRing({pct,size=56,stroke=5}) {
       const r=(size-stroke)/2, circ=2*Math.PI*r;
       const offset=circ-(pct/100)*circ;
-      const color=pct>=100?"#10b981":pct>=50?"#3b82f6":"#f59e0b";
+      const color=pct>=100?"#059669":pct>=50?"#2563eb":"#d97706";
       return (
         <svg width={size} height={size} className="transform -rotate-90">
-          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#e5e7eb" strokeWidth={stroke}/>
+          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#f3f4f6" strokeWidth={stroke}/>
           <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color}
             strokeWidth={stroke} strokeDasharray={circ} strokeDashoffset={offset}
-            strokeLinecap="round" style={{transition:"stroke-dashoffset 0.6s ease, stroke 0.3s"}}/>
+            strokeLinecap="round" style={{transition:"stroke-dashoffset 0.5s ease, stroke 0.3s"}}/>
           <text x={size/2} y={size/2} textAnchor="middle" dominantBaseline="central"
-            className="fill-gray-700 font-bold" fontSize={size*0.24}
+            fill="#374151" fontWeight="600" fontSize={size*0.24}
             style={{transform:"rotate(90deg)",transformOrigin:"center"}}>
             {Math.round(pct)}%
           </text>
@@ -147,39 +141,36 @@
       const del = () => { setEntry(entry.slice(0,-1)); setError(false); };
 
       return (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center"
-          onClick={onCancel}>
-          <div className="bg-white rounded-3xl p-6 w-80 shadow-2xl modal-slide" onClick={e=>e.stopPropagation()}>
-            <h3 className="text-center text-lg font-bold mb-1" style={{fontFamily:"'Fredoka',sans-serif",color:"#f97316"}}>
-              🔐 Parent PIN
-            </h3>
-            <p className="text-center text-sm text-gray-500 mb-4">Enter PIN to access settings</p>
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center" onClick={onCancel}>
+          <div className="bg-white rounded-2xl p-6 w-72 shadow-2xl modal-slide" onClick={e=>e.stopPropagation()}>
+            <h3 className="text-center text-base font-semibold text-gray-800 mb-1">Parent Access</h3>
+            <p className="text-center text-sm text-gray-400 mb-5">Enter your PIN</p>
             <div className="flex justify-center gap-3 mb-6">
               {Array.from({length:correctPin.length},(_,i)=>(
-                <div key={i} className={"w-4 h-4 rounded-full transition-all "+(
-                  error ? "bg-red-400 animate-pulse" :
-                  i<entry.length ? "bg-orange-400 scale-110" : "bg-gray-200"
+                <div key={i} className={"w-3 h-3 rounded-full transition-all "+(
+                  error ? "bg-red-400" :
+                  i<entry.length ? "bg-gray-800" : "bg-gray-200"
                 )}/>
               ))}
             </div>
-            <div className="grid grid-cols-3 gap-2 max-w-[240px] mx-auto">
+            <div className="grid grid-cols-3 gap-2 max-w-[220px] mx-auto">
               {[1,2,3,4,5,6,7,8,9].map(n=>(
                 <button key={n} onClick={()=>press(String(n))}
-                  className="h-14 rounded-xl bg-gray-50 hover:bg-gray-100 active:bg-gray-200 text-xl font-bold text-gray-700 transition-all active:scale-95">
+                  className="h-12 rounded-xl bg-gray-50 hover:bg-gray-100 active:bg-gray-200 text-lg font-semibold text-gray-700 transition-all active:scale-95">
                   {n}
                 </button>
               ))}
               <button onClick={onCancel}
-                className="h-14 rounded-xl bg-gray-50 hover:bg-gray-100 text-sm font-semibold text-gray-400 transition-all">
+                className="h-12 rounded-xl text-xs font-medium text-gray-400 hover:bg-gray-50 transition-all">
                 Cancel
               </button>
               <button onClick={()=>press("0")}
-                className="h-14 rounded-xl bg-gray-50 hover:bg-gray-100 active:bg-gray-200 text-xl font-bold text-gray-700 transition-all active:scale-95">
+                className="h-12 rounded-xl bg-gray-50 hover:bg-gray-100 active:bg-gray-200 text-lg font-semibold text-gray-700 transition-all active:scale-95">
                 0
               </button>
               <button onClick={del}
-                className="h-14 rounded-xl bg-gray-50 hover:bg-gray-100 text-xl font-semibold text-gray-400 transition-all">
-                ⌫
+                className="h-12 rounded-xl text-lg text-gray-400 hover:bg-gray-50 transition-all">
+                &#9003;
               </button>
             </div>
           </div>
@@ -192,7 +183,7 @@
       const today = getToday();
       const dailyKey = "summer-daily-"+today;
 
-      const [config, setConfig] = useState(() => load("summer-config-v2", DEFAULT_CONFIG));
+      const [config, setConfig] = useState(() => load("summer-config-v3", DEFAULT_CONFIG));
       const [daily, setDaily] = useState(() => {
         const d = load(dailyKey, {});
         config.kids.forEach(k => { if(!d[k]) d[k]=[]; });
@@ -213,7 +204,7 @@
 
       const prevPctRef = useRef({});
 
-      const saveConfig = (c) => { setConfig(c); save("summer-config-v2",c); };
+      const saveConfig = (c) => { setConfig(c); save("summer-config-v3",c); };
       const saveDaily = (d) => { setDaily(d); save(dailyKey,d); };
 
       const kid = config.kids[activeKid] || config.kids[0];
@@ -232,14 +223,14 @@
         else {
           curr.push(blockId);
           setJustChecked(blockId);
-          setTimeout(()=>setJustChecked(null),600);
+          setTimeout(()=>setJustChecked(null),500);
         }
         const newDaily = {...daily,[kid]:curr};
         const newPct = totalBlocks>0?(curr.length/totalBlocks)*100:0;
         const prev = prevPctRef.current[kid]||0;
         if(newPct>=100 && prev<100) {
           setShowConfetti(true);
-          setTimeout(()=>setShowConfetti(false),4000);
+          setTimeout(()=>setShowConfetti(false),3500);
         }
         prevPctRef.current[kid]=newPct;
         saveDaily(newDaily);
@@ -301,38 +292,37 @@
           <Confetti show={showConfetti} />
           {showPin && <PinPad correctPin={config.pin} onSuccess={pinSuccess} onCancel={()=>setShowPin(false)} />}
 
-          <div className="min-h-screen pb-8" style={{
-            background:"linear-gradient(160deg, #fef9c3 0%, #e0f2fe 40%, #fce7f3 80%, #f0fdf4 100%)",
-            fontFamily:"'Quicksand',sans-serif",
-          }}>
+          <div className="min-h-screen pb-8" style={{ background:"#f8f8f6" }}>
             {/* HEADER */}
-            <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-white/50 shadow-sm">
+            <div className="sticky top-0 z-40 bg-white/90 backdrop-blur-xl border-b border-gray-100 shadow-sm">
               <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
                 <div className="flex-1 min-w-0">
-                  <h1 className="text-2xl font-bold tracking-tight" style={{fontFamily:"'Fredoka',sans-serif",color:"#f97316"}}>
-                    ☀️ Summer Schedule
+                  <h1 className="text-xl font-bold text-gray-800 tracking-tight">
+                    Summer Schedule
                   </h1>
-                  <p className="text-sm text-gray-500 font-medium">{formatDate()}</p>
+                  <p className="text-xs text-gray-400 font-medium mt-0.5">{formatDate()}</p>
                 </div>
                 <ProgressRing pct={pct} />
                 <button onClick={openEdit}
-                  className="p-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all text-xl">
-                  ⚙️
+                  className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                  </svg>
                 </button>
               </div>
-              <div className="max-w-2xl mx-auto px-4 pb-2 flex gap-2">
+              <div className="max-w-2xl mx-auto px-4 pb-2.5 flex gap-2">
                 {config.kids.map((name,i) => {
                   const kc=(daily[name]||[]).length;
                   const kp=totalBlocks>0?Math.round((kc/totalBlocks)*100):0;
                   const active=i===activeKid;
                   return (
                     <button key={i} onClick={()=>setActiveKid(i)}
-                      className={"flex-1 py-2.5 px-4 rounded-xl font-semibold text-sm transition-all active:scale-95 "+(
-                        active?"bg-gradient-to-r from-orange-400 to-pink-400 text-white shadow-md shadow-orange-200"
-                              :"bg-white/60 text-gray-600 hover:bg-white/80"
-                      )} style={{fontFamily:"'Fredoka',sans-serif"}}>
+                      className={"flex-1 py-2 px-3 rounded-lg font-semibold text-sm transition-all active:scale-[0.97] "+(
+                        active?"bg-gray-800 text-white shadow-sm"
+                              :"bg-gray-100 text-gray-500 hover:bg-gray-200"
+                      )}>
                       {name}
-                      <span className={"ml-2 text-xs px-2 py-0.5 rounded-full "+(active?"bg-white/30":"bg-gray-100")}>
+                      <span className={"ml-2 text-xs px-1.5 py-0.5 rounded "+(active?"bg-white/20":"bg-gray-200")}>
                         {kp}%
                       </span>
                     </button>
@@ -343,7 +333,7 @@
 
             {/* DAYS LABEL */}
             <div className="max-w-2xl mx-auto px-4 mt-4 text-center">
-              <span className="inline-block px-4 py-1.5 rounded-full bg-white/70 text-xs font-bold text-gray-500 uppercase tracking-widest">
+              <span className="inline-block px-3 py-1 rounded-md bg-white text-xs font-semibold text-gray-400 uppercase tracking-widest border border-gray-100">
                 {config.weekdays}
               </span>
             </div>
@@ -351,19 +341,17 @@
             {/* CELEBRATION */}
             {pct >= 100 && (
               <div className="max-w-2xl mx-auto px-4 mt-4">
-                <div className="rounded-2xl p-4 bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 text-white text-center shadow-lg shadow-emerald-200">
-                  <div className="trophy-float inline-block mb-1 text-3xl">🏆</div>
-                  <p className="text-lg font-bold" style={{fontFamily:"'Fredoka',sans-serif"}}>
-                    All done today! Amazing job, {kid}! 🎉
-                  </p>
+                <div className="rounded-xl p-4 bg-emerald-600 text-white text-center shadow-md">
+                  <p className="text-base font-semibold">All done for today, {kid}!</p>
+                  <p className="text-sm opacity-80 mt-0.5">Great work. Enjoy the rest of your day.</p>
                 </div>
               </div>
             )}
 
             {/* SCHEDULE BLOCKS */}
-            <div className="max-w-2xl mx-auto px-4 mt-4 space-y-3">
+            <div className="max-w-2xl mx-auto px-4 mt-4 space-y-2.5">
               {config.blocks.map((block,i) => {
-                const st = BLOCK_STYLES[i % BLOCK_STYLES.length];
+                const c = BLOCK_COLORS[i % BLOCK_COLORS.length];
                 const isDone = checked.includes(block.id);
                 const isGated = block.gated;
                 const locked = isGated && !allNonGatedDone;
@@ -371,52 +359,56 @@
 
                 return (
                   <div key={block.id}
-                    className={"rounded-2xl overflow-hidden transition-all "+(locked?"opacity-60":"")+" "+(isDone?"ring-2 ring-green-300":"")}>
-                    <div className={"flex items-center gap-2 px-4 py-2 bg-gradient-to-r "+st.grad+" text-white"}>
-                      <span className="text-base">{st.emoji}</span>
-                      <span className="font-bold text-sm tracking-wide" style={{fontFamily:"'Fredoka',sans-serif"}}>
+                    className={"rounded-xl overflow-hidden transition-all border "+(
+                      isDone ? "border-emerald-200 bg-emerald-50/50" :
+                      locked ? "border-gray-200 bg-white opacity-50" :
+                      "border-gray-200 bg-white"
+                    )}>
+                    {/* color accent bar + time */}
+                    <div className="flex items-center gap-2.5 px-4 py-2 border-b border-gray-100">
+                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{backgroundColor:c.bar}}/>
+                      <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
                         {block.time}
                       </span>
                       {locked && (
-                        <span className="ml-auto text-xs bg-white/25 px-2 py-0.5 rounded-full">
-                          🔒 Earn this first
+                        <span className="ml-auto text-xs text-gray-400 flex items-center gap-1">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                          </svg>
+                          Complete other blocks first
                         </span>
                       )}
                       {isGated && !locked && (
-                        <span className="ml-auto text-xs bg-white/25 px-2 py-0.5 rounded-full">
-                          ✨ Unlocked!
-                        </span>
+                        <span className="ml-auto text-xs text-emerald-500 font-medium">Unlocked</span>
                       )}
                     </div>
 
+                    {/* content row */}
                     <button onClick={()=>toggle(block.id,isGated)}
                       disabled={locked}
-                      className={"w-full flex items-center gap-3 px-4 py-4 text-left transition-all "
-                        +(locked?"cursor-not-allowed":"cursor-pointer active:bg-gray-50")+" "
-                        +(isDone?"bg-green-50/80":"bg-white/80")+" backdrop-blur"}>
-                      <div className={"w-8 h-8 rounded-xl border-2 flex items-center justify-center flex-shrink-0 transition-all "+(
+                      className={"w-full flex items-center gap-3 px-4 py-3 text-left transition-all "
+                        +(locked?"cursor-not-allowed":"cursor-pointer active:bg-gray-50")}>
+                      {/* checkbox */}
+                      <div className={"w-6 h-6 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all "+(
                         isDone
-                          ? "bg-gradient-to-br "+st.grad+" border-transparent shadow-sm "+(isPopping?"check-bounce":"")
+                          ? "border-emerald-500 bg-emerald-500 "+(isPopping?"check-bounce":"")
                           : "border-gray-300 "+(locked?"":"hover:border-gray-400")
                       )}>
                         {isDone && (
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="20 6 9 17 4 12"/>
                           </svg>
                         )}
-                        {locked && !isDone && <span className="text-xs text-gray-300">🔒</span>}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className={"font-bold text-base transition-all "+(isDone?"line-through text-gray-400":"text-gray-800")}
-                          style={{fontFamily:"'Fredoka',sans-serif"}}>
+                        <p className={"text-sm font-semibold transition-all "+(isDone?"line-through text-gray-400":"text-gray-800")}>
                           {block.title}
                         </p>
-                        <p className={"text-sm mt-0.5 transition-all "+(isDone?"line-through text-gray-300":"text-gray-500")}>
+                        <p className={"text-xs mt-0.5 transition-all "+(isDone?"line-through text-gray-300":"text-gray-400")}>
                           {block.desc}
                         </p>
                       </div>
-                      {isDone && isPopping && <span className="star-pop text-2xl">⭐</span>}
-                      {isDone && !isPopping && <span className="text-lg opacity-60">✅</span>}
+                      {isDone && isPopping && <span className="fade-in text-base">&#10003;</span>}
                     </button>
                   </div>
                 );
@@ -425,15 +417,18 @@
 
             {/* FOOTER */}
             <div className="max-w-2xl mx-auto px-4 mt-5">
-              <p className="text-center text-sm font-bold text-orange-400 italic" style={{fontFamily:"'Fredoka',sans-serif"}}>
-                ⚡ Earn your screen time — do the work first!
+              <p className="text-center text-xs font-medium text-gray-400">
+                Earn your screen time \u2014 do the work first.
               </p>
             </div>
 
-            <div className="max-w-2xl mx-auto px-4 mt-4 flex justify-center">
+            <div className="max-w-2xl mx-auto px-4 mt-3 flex justify-center">
               <button onClick={resetDay}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/60 hover:bg-white/80 text-gray-500 text-sm font-medium transition-all active:scale-95">
-                🔄 Reset today
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-gray-50 border border-gray-200 text-gray-400 text-xs font-medium transition-all active:scale-95">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                </svg>
+                Reset today
               </button>
             </div>
           </div>
@@ -442,83 +437,81 @@
           {editing && (
             <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center"
               onClick={()=>setEditing(false)}>
-              <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl modal-slide"
+              <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl modal-slide"
                 onClick={e=>e.stopPropagation()}>
-                <div className="sticky top-0 bg-white/95 backdrop-blur-xl z-10 px-5 pt-5 pb-3 border-b flex items-center">
-                  <h2 className="text-xl font-bold flex-1" style={{fontFamily:"'Fredoka',sans-serif",color:"#f97316"}}>
-                    🔐 Parent Settings
-                  </h2>
-                  <button onClick={()=>setEditing(false)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 text-xl">✕</button>
+                <div className="sticky top-0 bg-white/95 backdrop-blur-xl z-10 px-5 pt-5 pb-3 border-b border-gray-100 flex items-center">
+                  <h2 className="text-lg font-semibold text-gray-800 flex-1">Settings</h2>
+                  <button onClick={()=>setEditing(false)} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
                 </div>
 
                 <div className="p-5 space-y-6">
-                  {/* Kid Names */}
                   <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Kid Names</label>
+                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Kid Names</label>
                     <div className="mt-2 space-y-2">
                       {editNames.map((name,i)=>(
                         <input key={i} value={name} onChange={e=>{
                           const n=[...editNames]; n[i]=e.target.value; setEditNames(n);
                         }}
-                          className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-orange-300 focus:ring-2 focus:ring-orange-100 outline-none text-base font-medium"
+                          className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-gray-400 focus:ring-1 focus:ring-gray-200 outline-none text-sm font-medium"
                           placeholder={"Kid "+(i+1)+"'s name"}
                         />
                       ))}
                     </div>
                   </div>
 
-                  {/* Days Label */}
                   <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Days Label</label>
+                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Days Label</label>
                     <input value={editWeekdays} onChange={e=>setEditWeekdays(e.target.value)}
-                      className="mt-2 w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-orange-300 focus:ring-2 focus:ring-orange-100 outline-none text-sm font-medium"
+                      className="mt-2 w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-gray-400 outline-none text-sm font-medium"
                       placeholder="e.g. MONDAY - FRIDAY"
                     />
                   </div>
 
-                  {/* PIN */}
                   <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Change PIN</label>
+                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">PIN</label>
                     <input value={editPin} onChange={e=>setEditPin(e.target.value.replace(/\D/g,"").slice(0,6))}
                       type="text" inputMode="numeric" maxLength={6}
-                      className="mt-2 w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-orange-300 focus:ring-2 focus:ring-orange-100 outline-none text-base font-medium tracking-widest text-center"
+                      className="mt-2 w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-gray-400 outline-none text-sm font-medium tracking-widest text-center"
                       placeholder="1234"
                     />
-                    <p className="text-xs text-gray-400 mt-1 text-center">4-6 digit numeric PIN</p>
+                    <p className="text-xs text-gray-300 mt-1 text-center">4\u20136 digits</p>
                   </div>
 
-                  {/* Schedule Blocks */}
                   <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Schedule Blocks</label>
+                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Schedule Blocks</label>
                     <div className="mt-2 space-y-2">
                       {editBlocks.map((block,i)=>(
-                        <div key={block.id} className={"rounded-xl border p-3 "+(block.gated?"border-indigo-200 bg-indigo-50/50":"border-gray-200 bg-gray-50/50")}>
+                        <div key={block.id} className={"rounded-lg border p-3 "+(block.gated?"border-indigo-200 bg-indigo-50/30":"border-gray-200 bg-gray-50/50")}>
                           {editingBlockIdx===i ? (
                             <div className="space-y-2">
                               <input value={block.time} onChange={e=>{
                                 const b=[...editBlocks]; b[i]={...b[i],time:e.target.value}; setEditBlocks(b);
                               }} placeholder="Time (e.g. 8:30 - 9:30)"
-                                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium outline-none focus:border-orange-300"
+                                className="w-full px-3 py-2 rounded-md border border-gray-200 text-sm outline-none focus:border-gray-400"
                               />
                               <input value={block.title} onChange={e=>{
                                 const b=[...editBlocks]; b[i]={...b[i],title:e.target.value}; setEditBlocks(b);
                               }} placeholder="Title"
-                                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium outline-none focus:border-orange-300"
+                                className="w-full px-3 py-2 rounded-md border border-gray-200 text-sm outline-none focus:border-gray-400"
                               />
                               <input value={block.desc} onChange={e=>{
                                 const b=[...editBlocks]; b[i]={...b[i],desc:e.target.value}; setEditBlocks(b);
                               }} placeholder="Description"
-                                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium outline-none focus:border-orange-300"
+                                className="w-full px-3 py-2 rounded-md border border-gray-200 text-sm outline-none focus:border-gray-400"
                               />
                               <div className="flex items-center gap-3">
-                                <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                                <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer">
                                   <input type="checkbox" checked={block.gated} onChange={e=>{
                                     const b=[...editBlocks]; b[i]={...b[i],gated:e.target.checked}; setEditBlocks(b);
                                   }} className="rounded" />
                                   Must earn (locked until others done)
                                 </label>
                                 <button onClick={()=>setEditingBlockIdx(null)}
-                                  className="ml-auto px-3 py-1 rounded-lg bg-orange-100 text-orange-600 text-xs font-bold">
+                                  className="ml-auto px-3 py-1 rounded-md bg-gray-800 text-white text-xs font-medium">
                                   Done
                                 </button>
                               </div>
@@ -526,58 +519,63 @@
                           ) : (
                             <div className="flex items-center gap-2">
                               <div className="flex flex-col gap-0.5 flex-shrink-0">
-                                <button onClick={()=>moveBlock(i,-1)} className="text-xs text-gray-400 hover:text-gray-600 leading-none">{"\u25B2"}</button>
-                                <button onClick={()=>moveBlock(i,1)} className="text-xs text-gray-400 hover:text-gray-600 leading-none">{"\u25BC"}</button>
+                                <button onClick={()=>moveBlock(i,-1)} className="text-xs text-gray-300 hover:text-gray-500 leading-none">{"\u25B2"}</button>
+                                <button onClick={()=>moveBlock(i,1)} className="text-xs text-gray-300 hover:text-gray-500 leading-none">{"\u25BC"}</button>
                               </div>
                               <div className="flex-1 min-w-0 cursor-pointer" onClick={()=>setEditingBlockIdx(i)}>
-                                <p className="text-xs font-bold text-gray-400">{block.time}</p>
-                                <p className="text-sm font-bold text-gray-700 truncate">{block.title}</p>
-                                {block.gated && <span className="text-xs text-indigo-500">🔒 Earned</span>}
+                                <p className="text-xs font-medium text-gray-400">{block.time}</p>
+                                <p className="text-sm font-semibold text-gray-700 truncate">{block.title}</p>
+                                {block.gated && <span className="text-xs text-indigo-400">Earned</span>}
                               </div>
                               <button onClick={()=>setEditingBlockIdx(i)}
-                                className="p-1.5 rounded-lg hover:bg-white text-gray-400 hover:text-orange-500">✏️</button>
+                                className="p-1.5 rounded-md hover:bg-gray-100 text-gray-300 hover:text-gray-500 text-sm">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                </svg>
+                              </button>
                               <button onClick={()=>removeBlock(block.id)}
-                                className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500">🗑️</button>
+                                className="p-1.5 rounded-md hover:bg-red-50 text-gray-300 hover:text-red-400 text-sm">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                </svg>
+                              </button>
                             </div>
                           )}
                         </div>
                       ))}
                     </div>
 
-                    {/* add new block */}
-                    <div className="mt-3 rounded-xl border border-dashed border-gray-300 p-3 space-y-2">
-                      <p className="text-xs font-bold text-gray-400">Add New Block</p>
+                    <div className="mt-3 rounded-lg border border-dashed border-gray-300 p-3 space-y-2">
+                      <p className="text-xs font-medium text-gray-400">Add New Block</p>
                       <input value={newBlock.time} onChange={e=>setNewBlock({...newBlock,time:e.target.value})}
                         placeholder="Time (e.g. 5:00 - 6:00)"
-                        className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-orange-300"
+                        className="w-full px-3 py-2 rounded-md border border-gray-200 text-sm outline-none focus:border-gray-400"
                       />
                       <input value={newBlock.title} onChange={e=>setNewBlock({...newBlock,title:e.target.value})}
                         placeholder="Title"
-                        className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-orange-300"
+                        className="w-full px-3 py-2 rounded-md border border-gray-200 text-sm outline-none focus:border-gray-400"
                       />
                       <input value={newBlock.desc} onChange={e=>setNewBlock({...newBlock,desc:e.target.value})}
                         placeholder="Description"
-                        className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-orange-300"
+                        className="w-full px-3 py-2 rounded-md border border-gray-200 text-sm outline-none focus:border-gray-400"
                       />
                       <div className="flex items-center gap-3">
-                        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                        <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer">
                           <input type="checkbox" checked={newBlock.gated} onChange={e=>setNewBlock({...newBlock,gated:e.target.checked})} className="rounded" />
                           Must earn
                         </label>
                         <button onClick={addBlock}
-                          className="ml-auto px-4 py-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-600 text-sm font-bold transition-all">
-                          ➕ Add
+                          className="ml-auto px-4 py-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-white text-xs font-medium transition-all">
+                          Add Block
                         </button>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Save */}
-                <div className="sticky bottom-0 p-5 bg-white/95 backdrop-blur-xl border-t">
+                <div className="sticky bottom-0 p-5 bg-white/95 backdrop-blur-xl border-t border-gray-100">
                   <button onClick={saveEdit}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-orange-400 to-pink-400 text-white font-bold text-base shadow-md shadow-orange-200 active:scale-95 transition-all"
-                    style={{fontFamily:"'Fredoka',sans-serif"}}>
+                    className="w-full py-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-semibold text-sm shadow-sm active:scale-[0.98] transition-all">
                     Save Changes
                   </button>
                 </div>
