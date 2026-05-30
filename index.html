@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Summer Schedule" />
+  <title>Summer Schedule ☀️</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☀️</text></svg>" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    body { margin: 0; overscroll-behavior: none; }
+    @keyframes confettiFall {
+      0% { opacity: 1; transform: translateY(0) rotate(0deg); }
+      100% { opacity: 0; transform: translateY(100vh) rotate(720deg); }
+    }
+    @keyframes popIn {
+      0% { transform: scale(0.5); opacity: 0; }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes bounceCheck {
+      0% { transform: scale(1); }
+      30% { transform: scale(1.3); }
+      60% { transform: scale(0.9); }
+      100% { transform: scale(1); }
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    .task-pop { animation: popIn 0.3s ease-out; }
+    .check-bounce { animation: bounceCheck 0.4s ease-out; }
+    .trophy-float { animation: float 2s ease-in-out infinite; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    /* ─── helpers ─── */
+    const getToday = () => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
+
+    const formatDate = () =>
+      new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+
+    const load = (key, fallback) => {
+      try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+      catch { return fallback; }
+    };
+    const save = (key, val) => {
+      try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+    };
+
+    /* ─── constants ─── */
+    const CAT = {
+      Chores:        { emoji: "🧹", gradient: "from-amber-400 to-orange-400" },
+      Reading:       { emoji: "📚", gradient: "from-sky-400 to-blue-500" },
+      Outside:       { emoji: "☀️", gradient: "from-emerald-400 to-green-500" },
+      Creative:      { emoji: "🎨", gradient: "from-fuchsia-400 to-purple-500" },
+      Learning:      { emoji: "📝", gradient: "from-teal-400 to-cyan-500" },
+      "Screen Time": { emoji: "🎮", gradient: "from-indigo-400 to-violet-500" },
+    };
+
+    const CATEGORY_ORDER = ["Chores", "Reading", "Outside", "Creative", "Learning", "Screen Time"];
+
+    const DEFAULT_CONFIG = {
+      kids: ["Kid 1", "Kid 2"],
+      tasks: [
+        { id: "bed",      category: "Chores",      label: "Make your bed" },
+        { id: "room",     category: "Chores",      label: "Clean your room" },
+        { id: "dishes",   category: "Chores",      label: "Help with dishes" },
+        { id: "laundry",  category: "Chores",      label: "Put away laundry" },
+        { id: "read",     category: "Reading",     label: "Read for 30 minutes" },
+        { id: "outside",  category: "Outside",     label: "Outside time (1 hour)" },
+        { id: "creative", category: "Creative",    label: "Creative time" },
+        { id: "learning", category: "Learning",    label: "Learning activity" },
+        { id: "screen",   category: "Screen Time", label: "Screen time (earned!)" },
+      ],
+    };
+
+    /* ─── Confetti ─── */
+    function Confetti({ show }) {
+      if (!show) return null;
+      const pieces = Array.from({ length: 50 }, (_, i) => {
+        const colors = ["#f59e0b","#3b82f6","#10b981","#ec4899","#8b5cf6","#f97316","#06b6d4"];
+        return (
+          <div key={i} className="absolute" style={{
+            left: `${Math.random()*100}%`, top: "-10px",
+            width: 6+Math.random()*8, height: (6+Math.random()*8)*0.6,
+            backgroundColor: colors[i%colors.length], borderRadius: 2, opacity: 0,
+            animation: `confettiFall ${1.5+Math.random()*1.5}s ${Math.random()*0.7}s ease-out forwards`,
+            transform: `rotate(${Math.random()*720}deg)`,
+          }} />
+        );
+      });
+      return <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">{pieces}</div>;
+    }
+
+    /* ─── Progress Ring ─── */
+    function ProgressRing({ pct, size = 72, stroke = 6 }) {
+      const r = (size - stroke) / 2;
+      const circ = 2 * Math.PI * r;
+      const offset = circ - (pct / 100) * circ;
+      const color = pct >= 100 ? "#10b981" : pct >= 50 ? "#3b82f6" : "#f59e0b";
+      return (
+        <svg width={size} height={size} className="transform -rotate-90">
+          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#e5e7eb" strokeWidth={stroke} />
+          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color}
+            strokeWidth={stroke} strokeDasharray={circ} strokeDashoffset={offset}
+            strokeLinecap="round" style={{ transition: "stroke-dashoffset 0.6s ease, stroke 0.3s" }} />
+          <text x={size/2} y={size/2} textAnchor="middle" dominantBaseline="central"
+            className="fill-gray-700 font-bold" fontSize={size*0.22}
+            style={{ transform: "rotate(90deg)", transformOrigin: "center" }}>
+            {Math.round(pct)}%
+          </text>
+        </svg>
+      );
+    }
+
+    /* ─── Check Icon SVG ─── */
+    function CheckIcon() {
+      return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      );
+    }
+
+    /* ─── Main App ─── */
+    function App() {
+      const today = getToday();
+      const dailyKey = `summer-daily-${today}`;
+
+      const [config, setConfig] = useState(() => load("summer-config", DEFAULT_CONFIG));
+      const [daily, setDaily] = useState(() => {
+        const d = load(dailyKey, {});
+        config.kids.forEach(k => { if (!d[k]) d[k] = []; });
+        return d;
+      });
+      const [activeKid, setActiveKid] = useState(0);
+      const [editing, setEditing] = useState(false);
+      const [showConfetti, setShowConfetti] = useState(false);
+      const [justChecked, setJustChecked] = useState(null);
+      const [editNames, setEditNames] = useState([]);
+      const [editTasks, setEditTasks] = useState([]);
+      const [newTask, setNewTask] = useState({ label: "", category: "Chores" });
+      const prevPctRef = useRef({});
+
+      const saveConfigState = (c) => { setConfig(c); save("summer-config", c); };
+      const saveDailyState = (d) => { setDaily(d); save(dailyKey, d); };
+
+      const kid = config.kids[activeKid] || config.kids[0];
+      const checked = daily[kid] || [];
+      const nonScreenTasks = config.tasks.filter(t => t.category !== "Screen Time");
+      const screenUnlocked = nonScreenTasks.every(t => checked.includes(t.id));
+      const totalTasks = config.tasks.length;
+      const totalDone = checked.length;
+      const pct = totalTasks > 0 ? (totalDone / totalTasks) * 100 : 0;
+
+      const toggle = (taskId, isScreen) => {
+        if (isScreen && !screenUnlocked) return;
+        const curr = [...(daily[kid] || [])];
+        const idx = curr.indexOf(taskId);
+        if (idx >= 0) { curr.splice(idx, 1); }
+        else {
+          curr.push(taskId);
+          setJustChecked(taskId);
+          setTimeout(() => setJustChecked(null), 600);
+        }
+        const newDaily = { ...daily, [kid]: curr };
+        const newPct = totalTasks > 0 ? (curr.length / totalTasks) * 100 : 0;
+        const prevPct = prevPctRef.current[kid] || 0;
+        if (newPct >= 100 && prevPct < 100) {
+          setShowConfetti(true);
+          setTimeout(() => setShowConfetti(false), 4000);
+        }
+        prevPctRef.current[kid] = newPct;
+        saveDailyState(newDaily);
+      };
+
+      const resetDay = () => {
+        const newDaily = { ...daily, [kid]: [] };
+        prevPctRef.current[kid] = 0;
+        saveDailyState(newDaily);
+      };
+
+      const openEdit = () => {
+        setEditNames([...config.kids]);
+        setEditTasks(config.tasks.map(t => ({ ...t })));
+        setNewTask({ label: "", category: "Chores" });
+        setEditing(true);
+      };
+
+      const saveEdit = () => {
+        const cleaned = editTasks.filter(t => t.label.trim());
+        const newConfig = { kids: editNames.map(n => n.trim() || "Kid"), tasks: cleaned };
+        const newDaily = {};
+        newConfig.kids.forEach((name, i) => {
+          const oldName = config.kids[i];
+          newDaily[name] = daily[oldName] || [];
+        });
+        saveConfigState(newConfig);
+        saveDailyState(newDaily);
+        setEditing(false);
+      };
+
+      const addTask = () => {
+        if (!newTask.label.trim()) return;
+        setEditTasks([...editTasks, { id: `t-${Date.now()}`, category: newTask.category, label: newTask.label.trim() }]);
+        setNewTask({ label: "", category: newTask.category });
+      };
+
+      const grouped = {};
+      CATEGORY_ORDER.forEach(cat => {
+        const items = config.tasks.filter(t => t.category === cat);
+        if (items.length > 0) grouped[cat] = items;
+      });
+
+      return (
+        <React.Fragment>
+          <Confetti show={showConfetti} />
+
+          <div className="min-h-screen pb-8" style={{
+            background: "linear-gradient(160deg, #fef9c3 0%, #e0f2fe 40%, #fce7f3 80%, #f0fdf4 100%)",
+            fontFamily: "'Quicksand', sans-serif",
+          }}>
+            {/* HEADER */}
+            <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-white/50 shadow-sm">
+              <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-2xl font-bold tracking-tight" style={{ fontFamily: "'Fredoka', sans-serif", color: "#f97316" }}>
+                    ☀️ Summer Schedule
+                  </h1>
+                  <p className="text-sm text-gray-500 font-medium">{formatDate()}</p>
+                </div>
+                <ProgressRing pct={pct} />
+                <button onClick={openEdit}
+                  className="p-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all text-xl">
+                  ⚙️
+                </button>
+              </div>
+
+              {/* KID TABS */}
+              <div className="max-w-2xl mx-auto px-4 pb-2 flex gap-2">
+                {config.kids.map((name, i) => {
+                  const kChecked = (daily[name] || []).length;
+                  const kPct = totalTasks > 0 ? Math.round((kChecked / totalTasks) * 100) : 0;
+                  const isActive = i === activeKid;
+                  return (
+                    <button key={i} onClick={() => setActiveKid(i)}
+                      className={`flex-1 py-2.5 px-4 rounded-xl font-semibold text-sm transition-all active:scale-95 ${
+                        isActive
+                          ? "bg-gradient-to-r from-orange-400 to-pink-400 text-white shadow-md shadow-orange-200"
+                          : "bg-white/60 text-gray-600 hover:bg-white/80"
+                      }`} style={{ fontFamily: "'Fredoka', sans-serif" }}>
+                      {name}
+                      <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${isActive ? "bg-white/30" : "bg-gray-100"}`}>
+                        {kPct}%
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* CELEBRATION */}
+            {pct >= 100 && (
+              <div className="max-w-2xl mx-auto px-4 mt-4">
+                <div className="rounded-2xl p-4 bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 text-white text-center shadow-lg shadow-emerald-200">
+                  <div className="trophy-float inline-block mb-1 text-3xl">🏆</div>
+                  <p className="text-lg font-bold" style={{ fontFamily: "'Fredoka', sans-serif" }}>
+                    All done for today! Amazing job, {kid}! 🎉
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* TASKS */}
+            <div className="max-w-2xl mx-auto px-4 mt-4 space-y-4">
+              {CATEGORY_ORDER.filter(cat => grouped[cat]).map(cat => {
+                const style = CAT[cat];
+                const isScreen = cat === "Screen Time";
+                const locked = isScreen && !screenUnlocked;
+
+                return (
+                  <div key={cat} className={`rounded-2xl overflow-hidden ${locked ? "opacity-70" : ""}`}>
+                    <div className={`flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r ${style.gradient} text-white`}>
+                      <span className="text-lg">{style.emoji}</span>
+                      <span className="font-bold text-sm tracking-wide uppercase" style={{ fontFamily: "'Fredoka', sans-serif" }}>
+                        {cat}
+                      </span>
+                      {locked && (
+                        <span className="ml-auto flex items-center gap-1 text-xs bg-white/25 px-2 py-1 rounded-full">
+                          🔒 Finish other tasks first
+                        </span>
+                      )}
+                      {isScreen && screenUnlocked && (
+                        <span className="ml-auto flex items-center gap-1 text-xs bg-white/25 px-2 py-1 rounded-full">
+                          ✨ Unlocked!
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="bg-white/80 backdrop-blur divide-y divide-gray-100">
+                      {grouped[cat].map(task => {
+                        const isDone = checked.includes(task.id);
+                        const isPopping = justChecked === task.id;
+                        return (
+                          <button key={task.id} onClick={() => toggle(task.id, isScreen)}
+                            disabled={locked}
+                            className={`w-full flex items-center gap-3 px-4 py-3.5 text-left transition-all active:bg-gray-50 ${
+                              locked ? "cursor-not-allowed" : "cursor-pointer"
+                            } ${isDone ? "bg-gray-50/50" : ""}`}>
+                            <div className={`w-7 h-7 rounded-lg border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                              isDone
+                                ? `bg-gradient-to-br ${style.gradient} border-transparent shadow-sm ${isPopping ? "check-bounce" : ""}`
+                                : `border-gray-300 ${locked ? "" : "hover:border-gray-400"}`
+                            }`}>
+                              {isDone && <CheckIcon />}
+                              {locked && !isDone && <span className="text-xs text-gray-300">🔒</span>}
+                            </div>
+                            <span className={`flex-1 font-semibold text-base transition-all ${
+                              isDone ? "line-through text-gray-400" : "text-gray-700"
+                            }`}>
+                              {task.label}
+                            </span>
+                            {isDone && isPopping && <span className="task-pop text-lg">⭐</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* RESET */}
+            <div className="max-w-2xl mx-auto px-4 mt-6 flex justify-center">
+              <button onClick={resetDay}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/60 hover:bg-white/80 text-gray-500 text-sm font-medium transition-all active:scale-95">
+                🔄 Reset today
+              </button>
+            </div>
+          </div>
+
+          {/* SETTINGS MODAL */}
+          {editing && (
+            <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center"
+              onClick={() => setEditing(false)}>
+              <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl"
+                onClick={e => e.stopPropagation()}>
+                <div className="sticky top-0 bg-white/95 backdrop-blur-xl z-10 px-5 pt-5 pb-3 border-b flex items-center">
+                  <h2 className="text-xl font-bold flex-1" style={{ fontFamily: "'Fredoka', sans-serif", color: "#f97316" }}>
+                    ⚙️ Settings
+                  </h2>
+                  <button onClick={() => setEditing(false)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 text-xl">
+                    ✕
+                  </button>
+                </div>
+
+                <div className="p-5 space-y-6">
+                  <div>
+                    <label className="text-sm font-bold text-gray-500 uppercase tracking-wide">Kid Names</label>
+                    <div className="mt-2 space-y-2">
+                      {editNames.map((name, i) => (
+                        <input key={i} value={name} onChange={e => {
+                          const n = [...editNames]; n[i] = e.target.value; setEditNames(n);
+                        }}
+                          className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-orange-300 focus:ring-2 focus:ring-orange-100 outline-none text-base font-medium"
+                          placeholder={`Kid ${i + 1}'s name`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-bold text-gray-500 uppercase tracking-wide">Daily Tasks</label>
+                    <div className="mt-2 space-y-2">
+                      {editTasks.map((task, i) => (
+                        <div key={task.id} className="flex items-center gap-2">
+                          <span className="text-base flex-shrink-0">{CAT[task.category]?.emoji || "📌"}</span>
+                          <input value={task.label} onChange={e => {
+                            const t = [...editTasks]; t[i] = { ...t[i], label: e.target.value }; setEditTasks(t);
+                          }}
+                            className="flex-1 px-3 py-2 rounded-lg border border-gray-200 focus:border-orange-300 outline-none text-sm font-medium min-w-0"
+                          />
+                          <select value={task.category} onChange={e => {
+                            const t = [...editTasks]; t[i] = { ...t[i], category: e.target.value }; setEditTasks(t);
+                          }}
+                            className="px-2 py-2 rounded-lg border border-gray-200 text-xs font-medium bg-white flex-shrink-0">
+                            {CATEGORY_ORDER.map(c => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                          <button onClick={() => setEditTasks(editTasks.filter(t => t.id !== task.id))}
+                            className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 flex-shrink-0">
+                            🗑️
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-3 flex items-center gap-2">
+                      <input value={newTask.label} onChange={e => setNewTask({ ...newTask, label: e.target.value })}
+                        onKeyDown={e => e.key === "Enter" && addTask()}
+                        placeholder="Add a task..."
+                        className="flex-1 px-3 py-2 rounded-lg border border-dashed border-gray-300 focus:border-orange-300 outline-none text-sm min-w-0"
+                      />
+                      <select value={newTask.category} onChange={e => setNewTask({ ...newTask, category: e.target.value })}
+                        className="px-2 py-2 rounded-lg border border-gray-200 text-xs font-medium bg-white flex-shrink-0">
+                        {CATEGORY_ORDER.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                      <button onClick={addTask}
+                        className="p-2 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-600 flex-shrink-0">
+                        ➕
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="sticky bottom-0 p-5 bg-white/95 backdrop-blur-xl border-t">
+                  <button onClick={saveEdit}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-orange-400 to-pink-400 text-white font-bold text-base shadow-md shadow-orange-200 active:scale-95 transition-all"
+                    style={{ fontFamily: "'Fredoka', sans-serif" }}>
+                    Save Changes
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </React.Fragment>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
