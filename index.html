@@ -80,7 +80,7 @@
     };
 
     /* Icons */
-    const I = ({n,s=18,c=""}) => {
+    const I = ({n,s=20,c=""}) => {
       const p = {
         check:<polyline points="20 6 9 17 4 12"/>,
         lock:<React.Fragment><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></React.Fragment>,
@@ -105,7 +105,7 @@
           {Array.from({length:40},(_,i)=>(
             <div key={i} className="absolute" style={{
               left:Math.random()*100+"%",top:"-10px",
-              width:5+Math.random()*6,height:(5+Math.random()*6)*0.5,
+              width:6+Math.random()*8,height:(6+Math.random()*8)*0.5,
               backgroundColor:colors[i%colors.length],borderRadius:1,opacity:0,
               animation:"confettiFall "+(1.8+Math.random()*1.2)+"s "+Math.random()*0.5+"s ease-out forwards",
               transform:"rotate("+Math.random()*720+"deg)",
@@ -116,7 +116,7 @@
     }
 
     /* Progress Ring */
-    function ProgressRing({pct,size=56,stroke=5}) {
+    function ProgressRing({pct,size=72,stroke=6}) {
       const r=(size-stroke)/2, circ=2*Math.PI*r;
       const offset=circ-(pct/100)*circ;
       const color=pct>=100?"#059669":pct>=50?"#2563eb":"#d97706";
@@ -149,21 +149,21 @@
       };
       return (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center" onClick={onCancel}>
-          <div className="bg-white rounded-2xl p-6 w-72 shadow-2xl modal-slide" onClick={e=>e.stopPropagation()}>
-            <h3 className="text-center text-base font-semibold text-gray-800 mb-1">Parent Access</h3>
-            <p className="text-center text-sm text-gray-400 mb-5">Enter your PIN</p>
-            <div className="flex justify-center gap-3 mb-6">
+          <div className="bg-white rounded-2xl p-8 w-80 shadow-2xl modal-slide" onClick={e=>e.stopPropagation()}>
+            <h3 className="text-center text-lg font-semibold text-gray-800 mb-1">Parent Access</h3>
+            <p className="text-center text-base text-gray-400 mb-6">Enter your PIN</p>
+            <div className="flex justify-center gap-4 mb-8">
               {Array.from({length:correctPin.length},(_,i)=>(
-                <div key={i} className={"w-3 h-3 rounded-full transition-all "+(error?"bg-red-400":i<entry.length?"bg-gray-800":"bg-gray-200")}/>
+                <div key={i} className={"w-4 h-4 rounded-full transition-all "+(error?"bg-red-400":i<entry.length?"bg-gray-800":"bg-gray-200")}/>
               ))}
             </div>
-            <div className="grid grid-cols-3 gap-2 max-w-[220px] mx-auto">
+            <div className="grid grid-cols-3 gap-3 max-w-[260px] mx-auto">
               {[1,2,3,4,5,6,7,8,9].map(n=>(
-                <button key={n} onClick={()=>press(String(n))} className="h-12 rounded-xl bg-gray-50 hover:bg-gray-100 active:bg-gray-200 text-lg font-semibold text-gray-700 transition-all active:scale-95">{n}</button>
+                <button key={n} onClick={()=>press(String(n))} className="h-14 rounded-xl bg-gray-50 hover:bg-gray-100 active:bg-gray-200 text-xl font-semibold text-gray-700 transition-all active:scale-95">{n}</button>
               ))}
-              <button onClick={onCancel} className="h-12 rounded-xl text-xs font-medium text-gray-400 hover:bg-gray-50">Cancel</button>
-              <button onClick={()=>press("0")} className="h-12 rounded-xl bg-gray-50 hover:bg-gray-100 active:bg-gray-200 text-lg font-semibold text-gray-700 transition-all active:scale-95">0</button>
-              <button onClick={()=>{setEntry(entry.slice(0,-1));setError(false);}} className="h-12 rounded-xl text-lg text-gray-400 hover:bg-gray-50">&#9003;</button>
+              <button onClick={onCancel} className="h-14 rounded-xl text-sm font-medium text-gray-400 hover:bg-gray-50">Cancel</button>
+              <button onClick={()=>press("0")} className="h-14 rounded-xl bg-gray-50 hover:bg-gray-100 active:bg-gray-200 text-xl font-semibold text-gray-700 transition-all active:scale-95">0</button>
+              <button onClick={()=>{setEntry(entry.slice(0,-1));setError(false);}} className="h-14 rounded-xl text-xl text-gray-400 hover:bg-gray-50">&#9003;</button>
             </div>
           </div>
         </div>
@@ -200,7 +200,6 @@
       const saveDaily = (d) => { setDaily(d); save(dailyKey,d); };
 
       const checked = daily.checked || [];
-      // subtasks: { blockId: [{id, text, done}] }
       const subtasks = daily.subtasks || {};
       const nonGated = config.blocks.filter(b=>!b.gated);
       const allNonGatedDone = nonGated.every(b=>checked.includes(b.id));
@@ -231,22 +230,17 @@
         saveDaily(newDaily);
       };
 
-      /* Subtask helpers */
       const addSubtask = (blockId) => {
         if(!newSubText.trim()) return;
         const blockSubs = [...(subtasks[blockId]||[])];
         blockSubs.push({ id:"s-"+Date.now(), text:newSubText.trim(), done:false });
-        const newSubs = {...subtasks, [blockId]:blockSubs};
-        saveDaily({...daily, subtasks:newSubs});
+        saveDaily({...daily, subtasks:{...subtasks, [blockId]:blockSubs}});
         setNewSubText("");
-        // keep input focused for rapid entry
         setTimeout(()=>inputRef.current&&inputRef.current.focus(),50);
       };
 
       const toggleSubtask = (blockId, subId) => {
-        const blockSubs = (subtasks[blockId]||[]).map(s =>
-          s.id===subId ? {...s, done:!s.done} : s
-        );
+        const blockSubs = (subtasks[blockId]||[]).map(s=>s.id===subId?{...s,done:!s.done}:s);
         saveDaily({...daily, subtasks:{...subtasks, [blockId]:blockSubs}});
       };
 
@@ -261,7 +255,6 @@
         setEmailSent(false);
       };
 
-      /* Email */
       const sendSummary = () => {
         const lines = [];
         const name = kidName || "Kid";
@@ -286,7 +279,6 @@
         setEmailSent(true);
       };
 
-      /* Settings */
       const openEdit = () => setShowPin(true);
       const pinSuccess = () => {
         setShowPin(false);
@@ -301,13 +293,7 @@
       };
       const saveEdit = () => {
         const cleaned = editBlocks.filter(b=>b.title.trim());
-        saveConfig({
-          blocks:cleaned,
-          pin:editPin||DEFAULT_PIN,
-          weekdays:editWeekdays,
-          parentEmail:editEmail.trim(),
-          kidName:editName.trim(),
-        });
+        saveConfig({blocks:cleaned,pin:editPin||DEFAULT_PIN,weekdays:editWeekdays,parentEmail:editEmail.trim(),kidName:editName.trim()});
         setEditing(false);
       };
       const addBlock = () => {
@@ -328,40 +314,40 @@
           <Confetti show={showConfetti} />
           {showPin && <PinPad correctPin={config.pin} onSuccess={pinSuccess} onCancel={()=>setShowPin(false)} />}
 
-          <div className="min-h-screen pb-8" style={{background:"#f8f8f6"}}>
+          <div className="min-h-screen pb-10" style={{background:"#f8f8f6"}}>
             {/* HEADER */}
             <div className="sticky top-0 z-40 bg-white/90 backdrop-blur-xl border-b border-gray-100 shadow-sm">
-              <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
+              <div className="max-w-4xl mx-auto px-6 py-4 flex items-center gap-4">
                 <div className="flex-1 min-w-0">
-                  <h1 className="text-xl font-bold text-gray-800 tracking-tight">{headerTitle}</h1>
-                  <p className="text-xs text-gray-400 font-medium mt-0.5">{formatDate()}</p>
+                  <h1 className="text-2xl font-bold text-gray-800 tracking-tight">{headerTitle}</h1>
+                  <p className="text-sm text-gray-400 font-medium mt-0.5">{formatDate()}</p>
                 </div>
                 <ProgressRing pct={pct} />
-                <button onClick={openEdit} className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all text-gray-500">
-                  <I n="settings" s={18}/>
+                <button onClick={openEdit} className="p-3 rounded-xl bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all text-gray-500">
+                  <I n="settings" s={22}/>
                 </button>
               </div>
             </div>
 
             {/* DAYS */}
-            <div className="max-w-2xl mx-auto px-4 mt-4 text-center">
-              <span className="inline-block px-3 py-1 rounded-md bg-white text-xs font-semibold text-gray-400 uppercase tracking-widest border border-gray-100">
+            <div className="max-w-4xl mx-auto px-6 mt-5 text-center">
+              <span className="inline-block px-4 py-1.5 rounded-lg bg-white text-sm font-semibold text-gray-400 uppercase tracking-widest border border-gray-100">
                 {config.weekdays}
               </span>
             </div>
 
             {/* CELEBRATION */}
             {pct>=100 && (
-              <div className="max-w-2xl mx-auto px-4 mt-4">
-                <div className="rounded-xl p-4 bg-emerald-600 text-white text-center shadow-md">
-                  <p className="text-base font-semibold">All done for today!</p>
-                  <p className="text-sm opacity-80 mt-0.5">Great work{kidName?", "+kidName:""}. Don't forget to send your summary.</p>
+              <div className="max-w-4xl mx-auto px-6 mt-5">
+                <div className="rounded-2xl p-5 bg-emerald-600 text-white text-center shadow-md">
+                  <p className="text-lg font-semibold">All done for today!</p>
+                  <p className="text-base opacity-80 mt-1">Great work{kidName?", "+kidName:""}. Don't forget to send your summary.</p>
                 </div>
               </div>
             )}
 
             {/* BLOCKS */}
-            <div className="max-w-2xl mx-auto px-4 mt-4 space-y-2.5">
+            <div className="max-w-4xl mx-auto px-6 mt-5 space-y-3">
               {config.blocks.map((block,i) => {
                 const c = BLOCK_COLORS[i%BLOCK_COLORS.length];
                 const isDone = checked.includes(block.id);
@@ -372,48 +358,48 @@
                 const isAdding = addingTo===block.id;
 
                 return (
-                  <div key={block.id} className={"rounded-xl overflow-hidden transition-all border "+(
+                  <div key={block.id} className={"rounded-2xl overflow-hidden transition-all border "+(
                     isDone?"border-emerald-200 bg-emerald-50/50":
                     locked?"border-gray-200 bg-white opacity-50":
                     "border-gray-200 bg-white"
                   )}>
                     {/* time bar */}
-                    <div className="flex items-center gap-2.5 px-4 py-2 border-b border-gray-100">
-                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{backgroundColor:c.bar}}/>
-                      <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{block.time}</span>
+                    <div className="flex items-center gap-3 px-5 py-2.5 border-b border-gray-100">
+                      <div className="w-3 h-3 rounded-full flex-shrink-0" style={{backgroundColor:c.bar}}/>
+                      <span className="text-sm font-semibold text-gray-400 uppercase tracking-wide">{block.time}</span>
                       {locked && (
-                        <span className="ml-auto text-xs text-gray-400 flex items-center gap-1">
-                          <I n="lock" s={12}/> Complete other blocks first
+                        <span className="ml-auto text-sm text-gray-400 flex items-center gap-1.5">
+                          <I n="lock" s={14}/> Complete other blocks first
                         </span>
                       )}
                       {isGated && !locked && (
-                        <span className="ml-auto text-xs text-emerald-500 font-medium">Unlocked</span>
+                        <span className="ml-auto text-sm text-emerald-500 font-medium">Unlocked</span>
                       )}
                     </div>
 
                     {/* main row */}
-                    <div className={"flex items-center gap-3 px-4 py-3 "+(locked?"cursor-not-allowed":"")}>
+                    <div className={"flex items-center gap-4 px-5 py-4 "+(locked?"cursor-not-allowed":"")}>
                       <div onClick={()=>!locked&&toggle(block.id,isGated)}
-                        className={"w-6 h-6 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all cursor-pointer "+(
+                        className={"w-8 h-8 rounded-lg border-2 flex items-center justify-center flex-shrink-0 transition-all cursor-pointer "+(
                         isDone?"border-emerald-500 bg-emerald-500 "+(isPopping?"check-bounce":"")
                               :"border-gray-300 "+(locked?"cursor-not-allowed":"hover:border-gray-400")
                       )}>
-                        {isDone && <I n="check" s={14} c="text-white"/>}
+                        {isDone && <I n="check" s={18} c="text-white"/>}
                       </div>
                       <div className="flex-1 min-w-0" onClick={()=>!locked&&toggle(block.id,isGated)} style={{cursor:locked?"not-allowed":"pointer"}}>
-                        <p className={"text-sm font-semibold transition-all "+(isDone?"line-through text-gray-400":"text-gray-800")}>
+                        <p className={"text-lg font-semibold transition-all "+(isDone?"line-through text-gray-400":"text-gray-800")}>
                           {block.title}
                         </p>
-                        <p className={"text-xs mt-0.5 transition-all "+(isDone?"line-through text-gray-300":"text-gray-400")}>
+                        <p className={"text-sm mt-0.5 transition-all "+(isDone?"line-through text-gray-300":"text-gray-400")}>
                           {block.desc}
                         </p>
                       </div>
                       {block.addable && !locked && (
                         <button onClick={()=>{setAddingTo(isAdding?null:block.id);setNewSubText("");}}
-                          className={"p-1.5 rounded-lg transition-all flex-shrink-0 "+(
+                          className={"p-2 rounded-xl transition-all flex-shrink-0 "+(
                             isAdding?"text-gray-500 bg-gray-100":"text-gray-300 hover:text-gray-500 hover:bg-gray-50"
                           )}>
-                          <I n={isAdding?"minus":"plus"} s={16}/>
+                          <I n={isAdding?"minus":"plus"} s={20}/>
                         </button>
                       )}
                     </div>
@@ -422,29 +408,29 @@
                     {blockSubs.length > 0 && (
                       <div className="border-t border-gray-100">
                         {blockSubs.map(sub => (
-                          <div key={sub.id} className="flex items-center gap-3 px-4 py-2 pl-14 fade-in group">
+                          <div key={sub.id} className="flex items-center gap-3 px-5 py-2.5 pl-[4.5rem] fade-in group">
                             <div onClick={()=>toggleSubtask(block.id,sub.id)}
-                              className={"w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 cursor-pointer transition-all "+(
+                              className={"w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 cursor-pointer transition-all "+(
                                 sub.done?"border-emerald-400 bg-emerald-400":"border-gray-300 hover:border-gray-400"
                               )}>
-                              {sub.done && <I n="check" s={10} c="text-white"/>}
+                              {sub.done && <I n="check" s={12} c="text-white"/>}
                             </div>
-                            <span className={"flex-1 text-xs font-medium transition-all "+(sub.done?"line-through text-gray-300":"text-gray-600")}>
+                            <span className={"flex-1 text-sm font-medium transition-all "+(sub.done?"line-through text-gray-300":"text-gray-600")}>
                               {sub.text}
                             </span>
                             <button onClick={()=>removeSubtask(block.id,sub.id)}
-                              className="p-1 rounded text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all sm:opacity-100">
-                              <I n="x" s={12}/>
+                              className="p-1.5 rounded text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 sm:opacity-100 transition-all">
+                              <I n="x" s={14}/>
                             </button>
                           </div>
                         ))}
                       </div>
                     )}
 
-                    {/* add subtask input */}
+                    {/* add subtask */}
                     {isAdding && (
-                      <div className="border-t border-gray-100 px-4 py-2.5 pl-14 fade-in">
-                        <div className="flex items-center gap-2">
+                      <div className="border-t border-gray-100 px-5 py-3 pl-[4.5rem] fade-in">
+                        <div className="flex items-center gap-3">
                           <input
                             ref={inputRef}
                             value={newSubText}
@@ -453,17 +439,17 @@
                               if(e.key==="Enter") addSubtask(block.id);
                               if(e.key==="Escape") { setAddingTo(null); setNewSubText(""); }
                             }}
-                            placeholder={"Add a task..."}
+                            placeholder="Add a task..."
                             autoFocus
-                            className="flex-1 px-3 py-1.5 rounded-md border border-gray-200 focus:border-gray-400 outline-none text-xs font-medium placeholder:text-gray-300"
+                            className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 focus:border-gray-400 outline-none text-sm font-medium placeholder:text-gray-300"
                           />
                           <button onClick={()=>addSubtask(block.id)}
                             disabled={!newSubText.trim()}
-                            className="px-3 py-1.5 rounded-md bg-gray-800 hover:bg-gray-700 disabled:bg-gray-200 text-white disabled:text-gray-400 text-xs font-medium transition-all">
+                            className="px-4 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 disabled:bg-gray-200 text-white disabled:text-gray-400 text-sm font-medium transition-all">
                             Add
                           </button>
                         </div>
-                        <p className="text-xs text-gray-300 mt-1">Press Enter to add, Escape to close</p>
+                        <p className="text-xs text-gray-300 mt-1.5">Press Enter to add, Escape to close</p>
                       </div>
                     )}
                   </div>
@@ -472,23 +458,23 @@
             </div>
 
             {/* FOOTER */}
-            <div className="max-w-2xl mx-auto px-4 mt-5">
-              <p className="text-center text-xs font-medium text-gray-400">
+            <div className="max-w-4xl mx-auto px-6 mt-6">
+              <p className="text-center text-sm font-medium text-gray-400">
                 Earn your screen time \u2014 do the work first.
               </p>
             </div>
 
-            <div className="max-w-2xl mx-auto px-4 mt-4 flex items-center justify-center gap-3">
+            <div className="max-w-4xl mx-auto px-6 mt-5 flex items-center justify-center gap-4">
               <button onClick={sendSummary}
-                className={"flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-95 "+(
+                className={"flex items-center gap-2 px-5 py-2.5 rounded-xl text-base font-medium transition-all active:scale-95 "+(
                   emailSent?"bg-emerald-50 text-emerald-600 border border-emerald-200"
                            :"bg-gray-800 text-white hover:bg-gray-700 shadow-sm"
                 )}>
-                <I n="send" s={14}/> {emailSent?"Summary Sent":"Send Summary"}
+                <I n="send" s={16}/> {emailSent?"Summary Sent":"Send Summary"}
               </button>
               <button onClick={resetDay}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white hover:bg-gray-50 border border-gray-200 text-gray-400 text-xs font-medium transition-all active:scale-95">
-                <I n="reset" s={12}/> Reset
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 text-gray-400 text-sm font-medium transition-all active:scale-95">
+                <I n="reset" s={14}/> Reset
               </button>
             </div>
           </div>
@@ -497,122 +483,117 @@
           {editing && (
             <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center"
               onClick={()=>setEditing(false)}>
-              <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl modal-slide"
+              <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-xl max-h-[85vh] overflow-y-auto shadow-2xl modal-slide"
                 onClick={e=>e.stopPropagation()}>
-                <div className="sticky top-0 bg-white/95 backdrop-blur-xl z-10 px-5 pt-5 pb-3 border-b border-gray-100 flex items-center">
-                  <h2 className="text-lg font-semibold text-gray-800 flex-1">Settings</h2>
-                  <button onClick={()=>setEditing(false)} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400"><I n="x" s={18}/></button>
+                <div className="sticky top-0 bg-white/95 backdrop-blur-xl z-10 px-6 pt-6 pb-4 border-b border-gray-100 flex items-center">
+                  <h2 className="text-xl font-semibold text-gray-800 flex-1">Settings</h2>
+                  <button onClick={()=>setEditing(false)} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400"><I n="x" s={20}/></button>
                 </div>
 
-                <div className="p-5 space-y-6">
-                  {/* Name */}
+                <div className="p-6 space-y-7">
                   <div>
-                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Kid's Name</label>
+                    <label className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Kid's Name</label>
                     <input value={editName} onChange={e=>setEditName(e.target.value)}
-                      className="mt-2 w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-gray-400 outline-none text-sm font-medium"
+                      className="mt-2 w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-gray-400 outline-none text-base font-medium"
                       placeholder="Name (shows in header)"
                     />
                   </div>
 
-                  {/* Email */}
                   <div>
-                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Parent Email</label>
+                    <label className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Parent Email</label>
                     <input value={editEmail} onChange={e=>setEditEmail(e.target.value)} type="email"
-                      className="mt-2 w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-gray-400 outline-none text-sm font-medium"
+                      className="mt-2 w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-gray-400 outline-none text-base font-medium"
                       placeholder="parent@email.com"
                     />
-                    <p className="text-xs text-gray-300 mt-1">Daily summaries go here</p>
+                    <p className="text-sm text-gray-300 mt-1">Daily summaries go here</p>
                   </div>
 
-                  {/* Days */}
                   <div>
-                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Days Label</label>
+                    <label className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Days Label</label>
                     <input value={editWeekdays} onChange={e=>setEditWeekdays(e.target.value)}
-                      className="mt-2 w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-gray-400 outline-none text-sm font-medium"
+                      className="mt-2 w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-gray-400 outline-none text-base font-medium"
                       placeholder="e.g. MONDAY - FRIDAY"
                     />
                   </div>
 
-                  {/* PIN */}
                   <div>
-                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">PIN</label>
+                    <label className="text-sm font-semibold text-gray-400 uppercase tracking-wide">PIN</label>
                     <input value={editPin} onChange={e=>setEditPin(e.target.value.replace(/\D/g,"").slice(0,6))}
                       type="text" inputMode="numeric" maxLength={6}
-                      className="mt-2 w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-gray-400 outline-none text-sm font-medium tracking-widest text-center"
+                      className="mt-2 w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-gray-400 outline-none text-base font-medium tracking-widest text-center"
                       placeholder="1234"
                     />
                   </div>
 
-                  {/* Blocks */}
                   <div>
-                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Schedule Blocks</label>
-                    <div className="mt-2 space-y-2">
+                    <label className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Schedule Blocks</label>
+                    <div className="mt-3 space-y-2">
                       {editBlocks.map((block,i)=>(
-                        <div key={block.id} className={"rounded-lg border p-3 "+(block.gated?"border-indigo-200 bg-indigo-50/30":"border-gray-200 bg-gray-50/50")}>
+                        <div key={block.id} className={"rounded-xl border p-4 "+(block.gated?"border-indigo-200 bg-indigo-50/30":"border-gray-200 bg-gray-50/50")}>
                           {editingBlockIdx===i ? (
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                               <input value={block.time} onChange={e=>{const b=[...editBlocks];b[i]={...b[i],time:e.target.value};setEditBlocks(b);}}
-                                placeholder="Time" className="w-full px-3 py-2 rounded-md border border-gray-200 text-sm outline-none focus:border-gray-400"/>
+                                placeholder="Time" className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-base outline-none focus:border-gray-400"/>
                               <input value={block.title} onChange={e=>{const b=[...editBlocks];b[i]={...b[i],title:e.target.value};setEditBlocks(b);}}
-                                placeholder="Title" className="w-full px-3 py-2 rounded-md border border-gray-200 text-sm outline-none focus:border-gray-400"/>
+                                placeholder="Title" className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-base outline-none focus:border-gray-400"/>
                               <input value={block.desc} onChange={e=>{const b=[...editBlocks];b[i]={...b[i],desc:e.target.value};setEditBlocks(b);}}
-                                placeholder="Description" className="w-full px-3 py-2 rounded-md border border-gray-200 text-sm outline-none focus:border-gray-400"/>
-                              <div className="flex items-center gap-4 flex-wrap">
-                                <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer">
-                                  <input type="checkbox" checked={block.gated} onChange={e=>{const b=[...editBlocks];b[i]={...b[i],gated:e.target.checked};setEditBlocks(b);}} className="rounded"/> Must earn
+                                placeholder="Description" className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-base outline-none focus:border-gray-400"/>
+                              <div className="flex items-center gap-5 flex-wrap">
+                                <label className="flex items-center gap-2 text-sm text-gray-500 cursor-pointer">
+                                  <input type="checkbox" checked={block.gated} onChange={e=>{const b=[...editBlocks];b[i]={...b[i],gated:e.target.checked};setEditBlocks(b);}} className="rounded w-4 h-4"/> Must earn
                                 </label>
-                                <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer">
-                                  <input type="checkbox" checked={block.addable} onChange={e=>{const b=[...editBlocks];b[i]={...b[i],addable:e.target.checked};setEditBlocks(b);}} className="rounded"/> Kids can add tasks
+                                <label className="flex items-center gap-2 text-sm text-gray-500 cursor-pointer">
+                                  <input type="checkbox" checked={block.addable} onChange={e=>{const b=[...editBlocks];b[i]={...b[i],addable:e.target.checked};setEditBlocks(b);}} className="rounded w-4 h-4"/> Kids can add tasks
                                 </label>
-                                <button onClick={()=>setEditingBlockIdx(null)} className="ml-auto px-3 py-1 rounded-md bg-gray-800 text-white text-xs font-medium">Done</button>
+                                <button onClick={()=>setEditingBlockIdx(null)} className="ml-auto px-4 py-1.5 rounded-lg bg-gray-800 text-white text-sm font-medium">Done</button>
                               </div>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-2">
-                              <div className="flex flex-col gap-0.5 flex-shrink-0">
-                                <button onClick={()=>moveBlock(i,-1)} className="text-xs text-gray-300 hover:text-gray-500 leading-none">{"\u25B2"}</button>
-                                <button onClick={()=>moveBlock(i,1)} className="text-xs text-gray-300 hover:text-gray-500 leading-none">{"\u25BC"}</button>
+                            <div className="flex items-center gap-3">
+                              <div className="flex flex-col gap-1 flex-shrink-0">
+                                <button onClick={()=>moveBlock(i,-1)} className="text-sm text-gray-300 hover:text-gray-500 leading-none">{"\u25B2"}</button>
+                                <button onClick={()=>moveBlock(i,1)} className="text-sm text-gray-300 hover:text-gray-500 leading-none">{"\u25BC"}</button>
                               </div>
                               <div className="flex-1 min-w-0 cursor-pointer" onClick={()=>setEditingBlockIdx(i)}>
-                                <p className="text-xs font-medium text-gray-400">{block.time}</p>
-                                <p className="text-sm font-semibold text-gray-700 truncate">{block.title}</p>
-                                <div className="flex gap-2 mt-0.5">
-                                  {block.gated && <span className="text-xs text-indigo-400">Earned</span>}
-                                  {block.addable && <span className="text-xs text-blue-400">+ Tasks</span>}
+                                <p className="text-sm font-medium text-gray-400">{block.time}</p>
+                                <p className="text-base font-semibold text-gray-700 truncate">{block.title}</p>
+                                <div className="flex gap-3 mt-0.5">
+                                  {block.gated && <span className="text-sm text-indigo-400">Earned</span>}
+                                  {block.addable && <span className="text-sm text-blue-400">+ Tasks</span>}
                                 </div>
                               </div>
-                              <button onClick={()=>setEditingBlockIdx(i)} className="p-1.5 rounded-md hover:bg-gray-100 text-gray-300 hover:text-gray-500"><I n="edit" s={14}/></button>
-                              <button onClick={()=>removeBlock(block.id)} className="p-1.5 rounded-md hover:bg-red-50 text-gray-300 hover:text-red-400"><I n="trash" s={14}/></button>
+                              <button onClick={()=>setEditingBlockIdx(i)} className="p-2 rounded-lg hover:bg-gray-100 text-gray-300 hover:text-gray-500"><I n="edit" s={16}/></button>
+                              <button onClick={()=>removeBlock(block.id)} className="p-2 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-400"><I n="trash" s={16}/></button>
                             </div>
                           )}
                         </div>
                       ))}
                     </div>
 
-                    <div className="mt-3 rounded-lg border border-dashed border-gray-300 p-3 space-y-2">
-                      <p className="text-xs font-medium text-gray-400">Add New Block</p>
+                    <div className="mt-4 rounded-xl border border-dashed border-gray-300 p-4 space-y-3">
+                      <p className="text-sm font-medium text-gray-400">Add New Block</p>
                       <input value={newBlock.time} onChange={e=>setNewBlock({...newBlock,time:e.target.value})}
-                        placeholder="Time" className="w-full px-3 py-2 rounded-md border border-gray-200 text-sm outline-none focus:border-gray-400"/>
+                        placeholder="Time" className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-base outline-none focus:border-gray-400"/>
                       <input value={newBlock.title} onChange={e=>setNewBlock({...newBlock,title:e.target.value})}
-                        placeholder="Title" className="w-full px-3 py-2 rounded-md border border-gray-200 text-sm outline-none focus:border-gray-400"/>
+                        placeholder="Title" className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-base outline-none focus:border-gray-400"/>
                       <input value={newBlock.desc} onChange={e=>setNewBlock({...newBlock,desc:e.target.value})}
-                        placeholder="Description" className="w-full px-3 py-2 rounded-md border border-gray-200 text-sm outline-none focus:border-gray-400"/>
-                      <div className="flex items-center gap-4 flex-wrap">
-                        <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer">
-                          <input type="checkbox" checked={newBlock.gated} onChange={e=>setNewBlock({...newBlock,gated:e.target.checked})} className="rounded"/> Must earn
+                        placeholder="Description" className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-base outline-none focus:border-gray-400"/>
+                      <div className="flex items-center gap-5 flex-wrap">
+                        <label className="flex items-center gap-2 text-sm text-gray-500 cursor-pointer">
+                          <input type="checkbox" checked={newBlock.gated} onChange={e=>setNewBlock({...newBlock,gated:e.target.checked})} className="rounded w-4 h-4"/> Must earn
                         </label>
-                        <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer">
-                          <input type="checkbox" checked={newBlock.addable} onChange={e=>setNewBlock({...newBlock,addable:e.target.checked})} className="rounded"/> Kids can add tasks
+                        <label className="flex items-center gap-2 text-sm text-gray-500 cursor-pointer">
+                          <input type="checkbox" checked={newBlock.addable} onChange={e=>setNewBlock({...newBlock,addable:e.target.checked})} className="rounded w-4 h-4"/> Kids can add tasks
                         </label>
-                        <button onClick={addBlock} className="ml-auto px-4 py-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-white text-xs font-medium transition-all">Add Block</button>
+                        <button onClick={addBlock} className="ml-auto px-5 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium transition-all">Add Block</button>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="sticky bottom-0 p-5 bg-white/95 backdrop-blur-xl border-t border-gray-100">
+                <div className="sticky bottom-0 p-6 bg-white/95 backdrop-blur-xl border-t border-gray-100">
                   <button onClick={saveEdit}
-                    className="w-full py-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-semibold text-sm shadow-sm active:scale-[0.98] transition-all">
+                    className="w-full py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-white font-semibold text-base shadow-sm active:scale-[0.98] transition-all">
                     Save Changes
                   </button>
                 </div>
